@@ -2,6 +2,7 @@
 import { ref } from "vue";
 import { useAuthStore } from "../stores/auth.store";
 import { Button } from "@/components/ui/button";
+import { toastStore } from "@/components/ui/toast/toast.store";
 
 const auth = useAuthStore();
 
@@ -43,9 +44,8 @@ async function verifyEnableMfa() {
     await auth.enableMfa();
     showMfaSetup.value = false;
     otp.value = "";
-  } catch (error) {
+  } catch {
     isInvalidCode.value = true;
-    console.log({ error });
   }
 }
 
@@ -65,16 +65,15 @@ async function updatePassword() {
     newPassword.value = "";
     confirmPassword.value = "";
     isUpdatePasswordError.value = false;
+    toastStore.show("Update password successfully", "success");
   } catch (error: any) {
-    console.log({error});
-    const data = error.response.data;
     isUpdatePasswordError.value = true;
-    if(data.code==="INVALID_PASSWORD"){
-      passwordUpdateError.value = data.message;    
+    if(error.code==="INVALID_PASSWORD"){
+      passwordUpdateError.value = error.message;    
     }
 
-    if(data.code==="VALIDATION_FAILED"){
-      passwordUpdateError.value = Object.values(data.error as Object)[0];    
+    if(error.code==="VALIDATION_FAILED"){
+      passwordUpdateError.value = Object.values(error.errors as Object)[0];    
     }
   } finally {
     loadingPassword.value = false;

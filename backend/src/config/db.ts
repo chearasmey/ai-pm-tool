@@ -31,6 +31,18 @@ export const getDB = async (): Promise<Database> => {
     );
   `);
 
+  await dbInstance.exec(`
+    CREATE TABLE IF NOT EXISTS projects (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      projectKey TEXT NOT NULL UNIQUE,
+      type TEXT NOT NULL,
+      description TEXT,
+      createdBy INTEGER NOT NULL,
+      createdAt TEXT DEFAULT CURRENT_TIMESTAMP
+    );
+  `);
+
   console.log("📦 SQLite DB Initialized");
 
   return dbInstance;

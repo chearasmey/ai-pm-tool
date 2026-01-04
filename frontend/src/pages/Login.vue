@@ -32,12 +32,11 @@ const submit = async () => {
       router.push("/");
     } catch (error: any) {
       console.log(error);
-      const errorData = error.response.data;
-      if (errorData.code === "OTP_REQUIRED") {
+      if (error.code === "OTP_REQUIRED") {
         isMfaEnabled.value = true;
       } else {
         isError.value = true;
-        errorMessage.value = errorData.message;
+        errorMessage.value = error.message;
       }
     }
   }

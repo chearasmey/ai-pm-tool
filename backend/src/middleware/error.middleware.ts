@@ -10,11 +10,9 @@ export const errorMiddleware = (
   if (err instanceof AppError) {
     return res.status(err.statusCode).json({
       success: false,
+      code: err.code,
       message: err.message,
-      error: {
-        code: err.code,
-        details: err.details ?? null
-      }
+      error: err.details ?? null
     });
   }
 
@@ -23,8 +21,7 @@ export const errorMiddleware = (
   return res.status(500).json({
     success: false,
     message: "Internal server error",
-    error: {
-      code: "INTERNAL_SERVER_ERROR"
-    }
+    code: "INTERNAL_SERVER_ERROR",
+    error: null
   });
 };

@@ -1,6 +1,7 @@
 import express from "express";
 import authRoutes from "./modules/auth/auth.routes";
 import userRoutes from "./modules/users/user.routes";
+import projectRoutes from "./modules/projects/project.routes";
 import { errorMiddleware } from "./middleware/error.middleware";
 import mfaRoutes from "./modules/mfa/mfa.routes";
 import { UserService } from "./modules/users/user.service";
@@ -19,7 +20,6 @@ app.use(
   })
 );
 app.use(express.json());
-app.use(errorMiddleware);
 
 app.get("/", async (req, res) => {
     const defaultUser = {
@@ -40,6 +40,8 @@ app.get("/", async (req, res) => {
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/mfa", mfaRoutes);
+app.use("/api/projects", projectRoutes)
 
+app.use(errorMiddleware);
 
 export default app;
