@@ -1,6 +1,13 @@
+import type { ProjectTypeEnum } from "./projectTypeEnum";
+
 export interface ProjectType {
-    id: number;
+    id?: number;
     name: string;
-    type: string;
-    open: string;
+    projectKey: string;
+    type: ProjectTypeEnum;
+    leadUserName?: string;
+    description?: string;
+    leadUserId?: number;
+    createdAt?: string;
+    updatedAt?: string;
 }

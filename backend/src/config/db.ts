@@ -38,10 +38,38 @@ export const getDB = async (): Promise<Database> => {
       projectKey TEXT NOT NULL UNIQUE,
       type TEXT NOT NULL,
       description TEXT,
+      leadUserId INTEGER,
       createdBy INTEGER NOT NULL,
-      createdAt TEXT DEFAULT CURRENT_TIMESTAMP
+      createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+      updatedAt TEXT DEFAULT CURRENT_TIMESTAMP
     );
   `);
+
+  await dbInstance.exec(`
+  CREATE TABLE IF NOT EXISTS project_member (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+      projectId INTEGER NOT NULL,
+      userId INTEGER NOT NULL,
+      role TEXT DEFAULT 'MEMBER' CHECK (
+        role IN ('member', 'admin')
+      ),
+
+      createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+
+      UNIQUE(projectId, userId),
+
+      FOREIGN KEY (projectId) REFERENCES projects(id) ON DELETE CASCADE,
+      FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_project_member_user
+      ON project_member(userId);
+
+    CREATE INDEX IF NOT EXISTS idx_project_member_project
+      ON project_member(projectId);
+  `);
+
 
   console.log("📦 SQLite DB Initialized");
 

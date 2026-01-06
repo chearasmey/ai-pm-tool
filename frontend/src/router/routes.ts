@@ -45,6 +45,11 @@ export const routes = [
                 path: "create",
                 component: () => import("../pages/CreateProject.vue"),
                 props: { type: "scrum" }
+            },
+            {
+                path: "project/:key",
+                component: () => import("../pages/UpdateProject.vue"),
+                props: { type: "scrum" }
             }
         ]
     },
@@ -59,6 +64,11 @@ export const routes = [
             {
                 path: "create",
                 component: () => import("../pages/CreateProject.vue"),
+                props: { type: "kanban" }
+            },
+            {
+                path: "project/:key",
+                component: () => import("../pages/UpdateProject.vue"),
                 props: { type: "kanban" }
             }
         ]

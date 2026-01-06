@@ -15,4 +15,9 @@ router.post(
   controller.create
 );
 
+router.get("/", controller.list);
+router.get("/:projectKey", controller.getByKey);
+router.put("/:projectKey", controller.update);
+router.delete("/:projectKey", controller.delete);
+
 export default router;

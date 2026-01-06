@@ -22,19 +22,34 @@ app.use(
 app.use(express.json());
 
 app.get("/", async (req, res) => {
-    const defaultUser = {
-        name: "John Doe",
-        email: "johndoe@email.com",
-        password: "password123",
-        role: UserRole.SYSTEM_ADMIN
-    }
+  const defaultUser = [{
+    name: "John Doe",
+    email: "johndoe@gmail.com",
+    password: "My@12345",
+    role: UserRole.SYSTEM_ADMIN
+  },
+  {
+    name: "Project Admin",
+    email: "mr.a@gmail.com",
+    password: "My@12345",
+    role: UserRole.PROJECT_ADMIN
+  },
+  {
+    name: "Janie Ross",
+    email: "janie@gmail.com",
+    password: "My@12345",
+    role: UserRole.NORMAL
+  }
+  ]
 
-    try {
-        await UserService.create(defaultUser);
-        res.send("Welcome to the API");
-    } catch (error: any) {
-        res.send(errorResponse(res, error.message || "Failed to create user", error.code || "USER_CREATION_FAILED", error.statusCode || 400));
-    }
+  try {
+    await UserService.create(defaultUser[0]);
+    await UserService.create(defaultUser[1]);
+    await UserService.create(defaultUser[2]);
+    res.send("Welcome to the API");
+  } catch (error: any) {
+    res.send(errorResponse(res, error.message || "Failed to create user", error.code || "USER_CREATION_FAILED", error.statusCode || 400));
+  }
 });
 
 app.use("/api/auth", authRoutes);

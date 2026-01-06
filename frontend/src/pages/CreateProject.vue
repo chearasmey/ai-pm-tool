@@ -69,7 +69,7 @@ watch(
         </BreadcrumbItem>
         <BreadcrumbSeparator />
         <BreadcrumbItem>
-          <BreadcrumbPage>Project</BreadcrumbPage>
+          <BreadcrumbPage>Create</BreadcrumbPage>
         </BreadcrumbItem>
       </BreadcrumbList>
     </Breadcrumb>
@@ -80,9 +80,6 @@ watch(
     </h1>
     <Input v-model="form.name" placeholder="Project name" />
     <Input v-model="form.projectKey" placeholder="PROJECT KEY" />
-    <p class="text-xs text-muted-foreground">
-      Generated from project name (you can edit)
-    </p>
     <Textarea v-model="form.description" placeholder="Description" />
     <p v-if="projectNameError" class="text-sm text-red-500 italic" v-html="'<strong>Project name:</strong> ' + projectNameError"></p>
     <p v-if="projectKeyError" class="text-sm text-red-500 italic" v-html="'<strong>PROJECT KEY:</strong> ' + projectKeyError"></p>

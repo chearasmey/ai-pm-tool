@@ -6,7 +6,12 @@ import { decodeToken } from "../../utils/jwt";
 
 
 export const UserController = {
-    list: async (_: Request, res: Response) => res.json(UserMapper.toResponseList(await UserService.list())),
+    list: async (_: Request, res: Response) => {
+        const users = await UserService.list();
+        const userList = users.map(user=>UserMapper.toResponse(user));
+        return successResponse(res, userList, "Get user list successfully", 200);
+
+    },
     create: async (req: Request, res: Response) => {
         try {
             const newUser = await UserService.create(req.body);

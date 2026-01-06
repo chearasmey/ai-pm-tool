@@ -11,6 +11,35 @@ export class ProjectController {
       req.body
     );
 
-    return successResponse(res, project, "PROJECT_CREATED", 201);
+    return successResponse(res, project, "Project has been created", 201);
+  }
+
+  async list(req: Request, res: Response) {
+    const user = req.user;
+    const payload = req.query;
+    const projects = await service.listProjects(user, payload);
+    return successResponse(res, projects, "Get project list successfully", 200);
+  }
+
+  async getByKey(req: Request, res: Response) {
+    const { projectKey } = req.params;
+    const user = req.user;
+    const projects = await service.getProjectByKey(projectKey, user);
+    return successResponse(res, projects, "Get project successful", 200);
+  }
+
+  async update(req: Request, res: Response) {
+    const { projectKey } = req.params;
+    const user = req.user;
+    const payload = req.body;
+    const projects = await service.update(projectKey, payload, user);
+    return successResponse(res, projects, "Update project successful", 200);
+  }
+
+  async delete(req: Request, res: Response) {
+    const { projectKey } = req.params;
+    const user = req.user;
+    await service.delete(projectKey, user);
+    return successResponse(res, null, "The project has been deleted successfull", 200); 
   }
 }
