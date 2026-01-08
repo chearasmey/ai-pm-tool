@@ -3,9 +3,8 @@ import { onMounted, ref } from "vue";
 import { Button } from "@/components/ui/button";
 import { useAuthStore } from "@/stores/auth.store";
 import { useProjectStore } from "@/stores/project.store";
-import { UserRole } from "@/types/role";
+import { UserRoleEnum } from "@/types/role";
 import { hasRole } from "@/utils/permission";
-import { ProjectTypeEnum } from "@/types/projectTypeEnum";
 import {
   InputGroup,
   InputGroupAddon,
@@ -20,7 +19,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import type { ProjectType } from "@/types/project";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -43,10 +41,11 @@ import {
 } from "@/components/ui/alert-dialog";
 import { ProjectService } from "@/api/project.api";
 import { toastStore } from "@/components/ui/toast/toast.store";
+import { ProjectTypeEnum, type ProjectInterface } from "@/types/project";
 
 const auth = useAuthStore();
 const projectStore = useProjectStore();
-const projects = ref<ProjectType[]>([]);
+const projects = ref<ProjectInterface[]>([]);
 const pagination = ref();
 const search = ref();
 const page = ref(1);
@@ -96,8 +95,9 @@ onMounted(async () => {
   <div class="flex justify-between">
     <h1 class="text-2xl font-semibold mb-4 uppercase">Kanban</h1>
     <Button
-      v-if="hasRole(auth.user?.role!, [UserRole.SYSTEM_ADMIN, UserRole.PROJECT_ADMIN])"
+      v-if="hasRole(auth.user?.role!, [UserRoleEnum.SYSTEM_ADMIN, UserRoleEnum.PROJECT_ADMIN])"
       as-child
+      variant="outline"
     >
       <router-link to="/kanban/create">Create</router-link>
     </Button>
@@ -122,7 +122,9 @@ onMounted(async () => {
       </TableHeader>
       <TableBody>
         <TableRow v-for="project in projects">
-          <TableCell>{{ project.name }}</TableCell>
+          <TableCell>
+            <router-link :to="`/kanban/board/${project.projectKey}`" class="hover:underline">{{ project.name }}</router-link>
+          </TableCell>
           <TableCell>{{ project.projectKey }}</TableCell>
           <TableCell>{{ project.leadUserName ?? "-" }}</TableCell>
           <TableCell>{{ formatRelativeDate(project.updatedAt ?? "-") }}</TableCell>
@@ -140,7 +142,7 @@ onMounted(async () => {
                   >
                 </DropdownMenuItem>
                 <DropdownMenuItem
-                  v-if="hasRole(auth.user?.role!, [UserRole.SYSTEM_ADMIN, UserRole.PROJECT_ADMIN])"
+                  v-if="hasRole(auth.user?.role!, [UserRoleEnum.SYSTEM_ADMIN, UserRoleEnum.PROJECT_ADMIN])"
                   @click="showDeleteDialog(project.projectKey!)"
                   >Delete Now</DropdownMenuItem
                 >

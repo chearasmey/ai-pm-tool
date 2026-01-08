@@ -1,9 +1,11 @@
+import type { UserRoleEnum } from "./role";
+
 export interface UserInterface{
     id: number;
     uuid?: string;
     email: string;
     name: string;
-    role: string;
-    mfaEnalbed: number;
+    role: UserRoleEnum;
+    mfaEnabled: boolean;
     createdAt?: string;
 }

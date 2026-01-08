@@ -1,19 +1,12 @@
 import { defineStore } from "pinia";
 import api from "../api/axios";
-import { UserRole } from "../types/role";
-
-interface User {
-    id: number;
-    email: string;
-    role: UserRole;
-    mfaEnabled: boolean;
-}
+import type { UserInterface } from "@/types/user";
 
 export const useAuthStore = defineStore("auth", {
 
     state: () => ({
         accessToken: null as string | null,
-        user: null as User | null,
+        user: null as UserInterface | null,
         isInitialized: false
     }),
 
@@ -72,16 +65,16 @@ export const useAuthStore = defineStore("auth", {
         },
 
         async verifyMfa(otp: string) {
-            return await api.post("/mfa/verify", {otp});
+            return await api.post("/mfa/verify", { otp });
         },
 
         async disableMfa() {
             this.user!.mfaEnabled = false;
             return await api.post("/mfa/disable")
         },
-        
+
         async updatePassword(currentPassword: string, newPassword: string) {
-            return await api.put("/users/change-password", {currentPassword, newPassword});
+            return await api.put("/users/change-password", { currentPassword, newPassword });
         }
     }
 });

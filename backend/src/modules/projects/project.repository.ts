@@ -1,5 +1,5 @@
 import { getDB } from "../../config/db";
-import { ProjectInterface, ProjectType } from "./project.type";
+import { ProjectInterface, ProjectRole, ProjectType } from "./project.type";
 
 export class ProjectRepository {
     async create(data: {
@@ -190,5 +190,78 @@ export class ProjectRepository {
     async deleteProjectByKey(projectKey: string) {
         const db = await getDB();
         return await db.run(`DELETE FROM projects WHERE projectKey = :projectKey`, [projectKey]);
+    }
+
+    async addMembers(id: number, payload: { userIds: number[], role: ProjectRole }) {
+        const db = await getDB();
+        if (!payload.userIds.length) return;
+
+        //User transaction for safety
+        await db.exec("BEGIN TRANSACTION");
+        try {
+            const stmt = await db.prepare(`
+        INSERT OR IGNORE INTO project_member (projectId, userId, role)
+        VALUES (?, ?, ?)
+      `);
+
+            for (const userId of payload.userIds) {
+                await stmt.run(id, userId, payload.role);
+            }
+
+            await stmt.finalize();
+            await db.exec("COMMIT");
+        } catch (err) {
+            await db.exec("ROLLBACK");
+            throw err;
+        }
+
+    }
+
+    async getProjectMembers(projectKey: string) {
+        const db = await getDB();
+
+        return await db.all(`
+      SELECT
+        u.id as userId,
+        u.name,
+        u.email,
+        pm.role,
+        pm.createdAt as joinedAt
+      FROM project_member pm
+      JOIN projects p ON p.id = pm.projectId
+      JOIN users u ON u.id = pm.userId
+      WHERE p.projectKey = ?
+      ORDER BY pm.createdAt ASC
+    `, projectKey);
+    }
+
+    async findProjectMembers(projectKey: string, search: string) {
+        const db = await getDB();
+        const searchClause = search
+            ? `AND (u.name LIKE :search OR u.email LIKE :search)`
+            : "";
+        const params = [projectKey];
+        if (searchClause) {
+            params.push(`%${search}%`);
+        }
+        return await db.all(`
+        SELECT
+            u.id as userId,
+            u.name,
+            u.email,
+            pm.role,
+            pm.createdAt as joinedAt
+        FROM project_member pm
+        JOIN projects p ON p.id = pm.projectId
+        JOIN users u ON u.id = pm.userId
+        WHERE p.projectKey = :projectKey
+        ${searchClause}
+        ORDER BY pm.createdAt ASC
+        `, params);
+    }
+
+    async removeMember(projectId: number, userId: number) {
+        const db = await getDB();
+        return await db.run(`DELETE FROM project_member WHERE projectId = :projectId AND userId = :userId`, [projectId, userId]);
     }
 }

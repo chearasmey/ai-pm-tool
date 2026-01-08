@@ -13,3 +13,8 @@ export interface ProjectInterface {
   createdAt?: string;
   updatedAt?: string;
 }
+
+export enum ProjectRole {
+  MEMBER = "member",
+  ADMIN = "admin"
+}

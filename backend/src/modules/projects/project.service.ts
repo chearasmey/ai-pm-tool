@@ -1,7 +1,6 @@
-import { Request, Response } from "express";
 import { AppError } from "../../errors/app.error";
 import { ProjectRepository } from "./project.repository";
-import { ProjectInterface, ProjectType } from "./project.type";
+import { ProjectInterface, ProjectRole, ProjectType } from "./project.type";
 import { UserRole } from "../../constants/role.enum";
 
 export class ProjectService {
@@ -28,7 +27,7 @@ export class ProjectService {
         });
     }
 
-    async listProjects(user: {role: UserRole, id: number}, payload: any) {
+    async listProjects(user: { role: UserRole, id: number }, payload: any) {
         const { type, page = 1, limit = 10, search } = payload;
 
         const result = await this.repo.listProjects({
@@ -46,24 +45,44 @@ export class ProjectService {
         };
     }
 
-    async getProjectByKey(projectKey: string, currentUser: {role: UserRole, id:number}) {
+    async getProjectByKey(projectKey: string, currentUser: { role: UserRole, id: number }) {
         const project = await this.repo.findByKey(projectKey);
-        if(!project) throw new AppError("Project not found", "PROJECT_NOT_FOUND", 404)
-        if(currentUser.role !== "system_admin" && project.createdBy !== currentUser.id) throw new AppError("No permission to get project detail", "NO_PERMISSION", 403);
+        if (!project) throw new AppError("Project not found", "PROJECT_NOT_FOUND", 404);
+        if (currentUser.role !== "system_admin" && project.createdBy !== currentUser.id) throw new AppError("No permission to get project detail", "NO_PERMISSION", 403);
         return project;
     }
 
-    async update(projectKey: string, payload:ProjectInterface, currentUser: {role: UserRole, id: number}){
+    async update(projectKey: string, payload: ProjectInterface, currentUser: { role: UserRole, id: number }) {
         const project = await this.repo.findByKey(projectKey);
-        if(!project) throw new AppError("Project not found", "PROJECT_NOT_FOUND", 404)
-        if(currentUser.role !== "system_admin" && project.createdBy !== currentUser.id) throw new AppError("No permission to get project detail", "NO_PERMISSION", 403);
-        return await this.repo.updateProjectByKey(projectKey, payload );
+        if (!project) throw new AppError("Project not found", "PROJECT_NOT_FOUND", 404);
+        if (currentUser.role !== "system_admin" && project.createdBy !== currentUser.id) throw new AppError("No permission to get project detail", "NO_PERMISSION", 403);
+        return await this.repo.updateProjectByKey(projectKey, payload);
     }
 
-    async delete(projectKey: string, currentUser: {role: UserRole, id: number}){
+    async delete(projectKey: string, currentUser: { role: UserRole, id: number }) {
         const project = await this.repo.findByKey(projectKey);
-        if(!project) throw new AppError("Project not found", "PROJECT_NOT_FOUND", 404)
-        if(currentUser.role !== "system_admin" && project.createdBy !== currentUser.id) throw new AppError("No permission to get project detail", "NO_PERMISSION", 403);
+        if (!project) throw new AppError("Project not found", "PROJECT_NOT_FOUND", 404);
+        if (currentUser.role !== "system_admin" && project.createdBy !== currentUser.id) throw new AppError("No permission to get project detail", "NO_PERMISSION", 403);
         return await this.repo.deleteProjectByKey(projectKey);
+    }
+
+    async addMembers(projectKey: string, currentUser: { role: UserRole, id: number }, payload: { userIds: number[], role: ProjectRole }) {
+        const project = await this.repo.findByKey(projectKey);
+        if (!project) throw new AppError("Project not found", "PROJECT_NOT_FOUND", 404);
+        if (currentUser.role !== "system_admin" && project.createdBy !== currentUser.id) throw new AppError("No permission to get project detail", "NO_PERMISSION", 403);
+        return await this.repo.addMembers(project.id, payload);
+    }
+
+    async getProjectMembers(projectKey: string, search?: string) {
+        const project = await this.repo.findByKey(projectKey);
+        if (!project) throw new AppError("Project not found", "PROJECT_NOT_FOUND", 404);        
+        return search ? await this.repo.findProjectMembers(projectKey, search) : await this.repo.getProjectMembers(projectKey);
+    }
+
+    async removeMember(projectKey: string, currentUser: { role: UserRole, id: number }, userId: number) {
+        const project = await this.repo.findByKey(projectKey);
+        if (!project) throw new AppError("Project not found", "PROJECT_NOT_FOUND", 404);
+        if (currentUser.role !== "system_admin" && project.createdBy !== currentUser.id) throw new AppError("No permission to get project detail", "NO_PERMISSION", 403);
+        return await this.repo.removeMember(project.id, userId);
     }
 }

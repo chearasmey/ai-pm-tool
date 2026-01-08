@@ -1,0 +1,71 @@
+<script setup lang="ts">
+import {
+  Breadcrumb,
+  BreadcrumbList,
+  BreadcrumbItem,
+  BreadcrumbSeparator,
+  BreadcrumbPage,
+} from "@/components/ui/breadcrumb";
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from "@/components/ui/dropdown-menu";
+import { useAuthStore } from "@/stores/auth.store";
+import { UserRoleEnum } from "@/types/role";
+import { hasRole } from "@/utils/permission";
+import { UserIcon } from "lucide-vue-next";
+import { useRoute } from "vue-router";
+const auth = useAuthStore();
+const route = useRoute();
+</script>
+<template>
+  <div class="mb-3">
+    <Breadcrumb>
+      <BreadcrumbList>
+        <BreadcrumbItem>
+          <router-link :to="`/kanban`">KANBAN</router-link>
+        </BreadcrumbItem>
+        <BreadcrumbSeparator />
+        <BreadcrumbItem>
+          <BreadcrumbPage>Board</BreadcrumbPage>
+        </BreadcrumbItem>
+      </BreadcrumbList>
+    </Breadcrumb>
+  </div>
+  <div class="flex justify-between">
+    <div class="flex items-center gap-2 mb-4">
+      <h1 class="text-2xl font-semibold uppercase">Kanban Board</h1>
+
+      <div class="hover:bg-gray-200 p-2 rounded-sm">
+        <router-link :to="`/kanban/board/${route.params.key}/people`"><UserIcon /></router-link>
+      </div>
+
+      <DropdownMenu v-if="hasRole(auth.user?.role!, [UserRoleEnum.SYSTEM_ADMIN, UserRoleEnum.PROJECT_ADMIN])">
+        <DropdownMenuTrigger
+          class="flex flex-col justify-center font-bold hover:bg-gray-200 px-2 pb-2 rounded-sm"
+          title="More actions"
+          >...</DropdownMenuTrigger
+        >
+        <DropdownMenuContent>
+          <DropdownMenuItem>
+            <router-link :to="`/kanban/project/${route.params.key}`"
+              >Project Setting</router-link
+            >
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
+    <Button variant="outline" as-child>
+      <router-link to="#">Create</router-link>
+    </Button>
+  </div>
+  <div v-if="hasRole(auth.user?.role!, [UserRoleEnum.SYSTEM_ADMIN, UserRoleEnum.PROJECT_ADMIN])">
+    sprint & backlog
+  </div>
+  <div>
+    active sprint
+  </div>
+</template>

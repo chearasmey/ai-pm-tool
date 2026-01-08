@@ -40,6 +40,30 @@ export class ProjectController {
     const { projectKey } = req.params;
     const user = req.user;
     await service.delete(projectKey, user);
-    return successResponse(res, null, "The project has been deleted successfull", 200); 
+    return successResponse(res, null, "The project has been deleted successfull", 200);
   }
+
+  async addMembers(req: Request, res: Response) {
+    const { projectKey } = req.params;
+    const user = req.user;
+    const payload = req.body;
+    await service.addMembers(projectKey, user, payload);
+    return successResponse(res, null, "Add members successfully", 201);
+  }
+
+  async getProjectMembers(req: Request, res: Response) {
+    const { projectKey } = req.params;
+    const { search } = req.query;
+    const members = search ? await service.getProjectMembers(projectKey, search as string) : await service.getProjectMembers(projectKey);
+    return successResponse(res, members, "Get members successfully", 200);
+  }
+
+  async removeMember(req: Request, res: Response) {
+    const { projectKey, userId } = req.params;
+    const user = req.user;
+    await service.removeMember(projectKey, user, Number(userId));
+    return successResponse(res, null, "Remove user successfully", 200);
+
+  }
+
 }

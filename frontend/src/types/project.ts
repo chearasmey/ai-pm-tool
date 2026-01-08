@@ -1,6 +1,4 @@
-import type { ProjectTypeEnum } from "./projectTypeEnum";
-
-export interface ProjectType {
+export interface ProjectInterface {
     id?: number;
     name: string;
     projectKey: string;
@@ -10,4 +8,22 @@ export interface ProjectType {
     leadUserId?: number;
     createdAt?: string;
     updatedAt?: string;
+}
+
+export interface ProjectMemberInterface {
+    userId: number;
+    name: string;
+    email: string;
+    role: string;
+    joinedAt: string;
+}
+
+export enum ProjectRoleEnum {
+    'MEMBER' = 'member',
+    'ADMIN' = 'admin'
+}
+
+export enum ProjectTypeEnum {
+    SCRUM = 'scrum',
+    KANBAN = 'kanban'
 }

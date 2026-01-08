@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import type { ProjectTypeEnum } from "@/types/projectTypeEnum";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -23,7 +22,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { UserService } from "@/api/user.api";
-import { UserInterface } from "@/types/user";
+import type { ProjectTypeEnum } from "@/types/project";
+import type { UserInterface } from "@/types/user";
 
 const props = defineProps<{
   type: ProjectTypeEnum;
@@ -128,7 +128,7 @@ onMounted(async () => {
     ></p>
 
     <div class="flex justify-center">
-      <Button @click="update">Update</Button>
+      <Button variant="outline" @click="update">Update</Button>
     </div>
   </div>
 </template>

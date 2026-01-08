@@ -3,9 +3,8 @@ import { onMounted, ref } from "vue";
 import { Button } from "@/components/ui/button";
 import { useAuthStore } from "@/stores/auth.store";
 import { useProjectStore } from "@/stores/project.store";
-import { UserRole } from "@/types/role";
+import { UserRoleEnum } from "@/types/role";
 import { hasRole } from "@/utils/permission";
-import { ProjectTypeEnum } from "@/types/projectTypeEnum";
 import {
   InputGroup,
   InputGroupAddon,
@@ -20,7 +19,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import type { ProjectType } from "@/types/project";
+import { ProjectTypeEnum, type ProjectInterface } from "@/types/project";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -46,7 +45,7 @@ import { toastStore } from "@/components/ui/toast/toast.store";
 
 const auth = useAuthStore();
 const projectStore = useProjectStore();
-const projects = ref<ProjectType[]>([]);
+const projects = ref<ProjectInterface[]>([]);
 const pagination = ref();
 const search = ref();
 const page = ref(1);
@@ -96,8 +95,9 @@ onMounted(async () => {
   <div class="flex justify-between">
     <h1 class="text-2xl font-semibold mb-4 uppercase">Scrum</h1>
     <Button
-      v-if="hasRole(auth.user?.role!, [UserRole.SYSTEM_ADMIN, UserRole.PROJECT_ADMIN])"
+      v-if="hasRole(auth.user?.role!, [UserRoleEnum.SYSTEM_ADMIN, UserRoleEnum.PROJECT_ADMIN])"
       as-child
+      variant="outline"
     >
       <router-link to="/scrum/create">Create</router-link>
     </Button>
@@ -117,16 +117,18 @@ onMounted(async () => {
           <TableHead>Key</TableHead>
           <TableHead>Lead</TableHead>
           <TableHead>Last work update</TableHead>
-          <TableHead>Action</TableHead>
+          <TableHead v-if="hasRole(auth.user?.role!, [UserRoleEnum.SYSTEM_ADMIN, UserRoleEnum.PROJECT_ADMIN])">Action</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
         <TableRow v-for="project in projects">
-          <TableCell>{{ project.name }}</TableCell>
+          <TableCell>
+            <router-link :to="`/scrum/board/${project.projectKey}`" class="hover:underline">{{ project.name }}</router-link>
+          </TableCell>
           <TableCell>{{ project.projectKey }}</TableCell>
           <TableCell>{{ project.leadUserName ?? "-" }}</TableCell>
           <TableCell>{{ formatRelativeDate(project.updatedAt ?? "-") }}</TableCell>
-          <TableCell>
+          <TableCell v-if="hasRole(auth.user?.role!, [UserRoleEnum.SYSTEM_ADMIN, UserRoleEnum.PROJECT_ADMIN])">
             <DropdownMenu>
               <DropdownMenuTrigger
                 class="flex flex-col justify-center font-bold hover:bg-gray-200 px-2 pb-2 rounded-sm"
@@ -139,7 +141,7 @@ onMounted(async () => {
                     >Project Setting</router-link
                   >
                 </DropdownMenuItem>
-                <DropdownMenuItem v-if="hasRole(auth.user?.role!, [UserRole.SYSTEM_ADMIN, UserRole.PROJECT_ADMIN])" @click="showDeleteDialog(project.projectKey!)"
+                <DropdownMenuItem v-if="hasRole(auth.user?.role!, [UserRoleEnum.SYSTEM_ADMIN, UserRoleEnum.PROJECT_ADMIN])" @click="showDeleteDialog(project.projectKey!)"
                   >Delete Now</DropdownMenuItem
                 >
               </DropdownMenuContent>

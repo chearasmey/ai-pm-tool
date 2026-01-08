@@ -85,7 +85,7 @@ watch(
     <p v-if="projectKeyError" class="text-sm text-red-500 italic" v-html="'<strong>PROJECT KEY:</strong> ' + projectKeyError"></p>
 
     <div class="flex justify-center">
-      <Button @click="submit">Create</Button>
+      <Button variant="outline" @click="submit">Save</Button>
     </div>
   </div>
 </template>
