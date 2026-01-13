@@ -70,6 +70,62 @@ export const getDB = async (): Promise<Database> => {
       ON project_member(projectId);
   `);
 
+  await dbInstance.exec(`
+    CREATE TABLE IF NOT EXISTS sprint (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      projectId INTEGER NOT NULL,
+      name TEXT NOT NULL,
+      goal TEXT,
+      startDate TEXT,
+      endDate TEXT,
+      status TEXT CHECK(status IN ('PLANNED','ACTIVE','COMPLETED')) DEFAULT 'PLANNED',
+      createdBy INTEGER NOT NULL,
+      createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+      updatedAt TEXT DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_sprint_project ON sprint(projectId);
+  `);
+
+  await dbInstance.exec(`
+    CREATE TABLE IF NOT EXISTS board_status (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      projectId INTEGER NOT NULL,
+      name TEXT NOT NULL,
+      category TEXT CHECK(category IN ('TODO','IN_PROGRESS','DONE')) DEFAULT 'TODO',
+      position INTEGER NOT NULL DEFAULT 0,
+      createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+      updatedAt TEXT DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(projectId, name)
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_board_status_project ON board_status(projectId);
+  `);
+  
+  await dbInstance.exec(`
+    CREATE TABLE IF NOT EXISTS issue (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      projectId INTEGER NOT NULL,
+      sprintId INTEGER,
+      parentId INTEGER,
+      type TEXT CHECK(type IN ('EPIC','STORY','TASK','BUG','SUBTASK')) NOT NULL,
+      title TEXT NOT NULL,
+      description TEXT,
+      statusId INTEGER NOT NULL,
+      assigneeId INTEGER,
+      createdBy INTEGER NOT NULL,
+      createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+      updatedAt TEXT DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY(statusId) REFERENCES board_status(id)
+      FOREIGN KEY(parentId) REFERENCES issue(id) ON DELETE SET NULL
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_issue_project ON issue(projectId);
+    CREATE INDEX IF NOT EXISTS idx_issue_parent ON issue(parentId);
+    CREATE INDEX IF NOT EXISTS idx_issue_status ON issue(statusId);
+    CREATE INDEX IF NOT EXISTS idx_issue_sprint ON issue(sprintId);
+
+  `);
 
   console.log("📦 SQLite DB Initialized");
 

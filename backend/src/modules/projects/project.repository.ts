@@ -1,8 +1,9 @@
 import { getDB } from "../../config/db";
-import { ProjectInterface, ProjectRole, ProjectType } from "./project.type";
+import { Project } from "./project.model";
+import { ProjectRole, ProjectType } from "./project.type";
 
 export class ProjectRepository {
-    async create(data: {
+    static async create(data: {
         name: string;
         projectKey: string;
         type: string;
@@ -25,22 +26,22 @@ export class ProjectRepository {
         return this.findById(result.lastID!);
     }
 
-    async findById(id: number) {
+    static async findById(id: number): Promise<Project | undefined> {
         const db = await getDB();
         return db.get("SELECT * FROM projects WHERE id = ?", id);
     }
 
-    async findByKey(projectKey: string) {
+    static async findByKey(projectKey: string): Promise<Project | undefined> {
         const db = await getDB();
         return db.get("SELECT * FROM projects WHERE projectKey = ?", projectKey);
     }
 
-    async existsKey(projectKey: string): Promise<boolean | undefined> {
+    static async existsKey(projectKey: string): Promise<boolean | undefined> {
         const db = await getDB();
         return db.get("SELECT * FROM projects WHERE projectKey = ?", projectKey)
     }
 
-    async listProjects(params: {
+    static async listProjects(params: {
         type: ProjectType;
         userId: number;
         role: string;
@@ -157,7 +158,7 @@ export class ProjectRepository {
         };
     }
 
-    buildPagination(page: number, limit: number) {
+    static buildPagination(page: number, limit: number) {
         const safePage = Math.max(page || 1, 1);
         const safeLimit = Math.min(limit || 10, 50);
         return {
@@ -166,7 +167,7 @@ export class ProjectRepository {
         };
     }
 
-    async updateProjectByKey(projectKey: string, payload: Partial<ProjectInterface>) {
+    static async updateProjectByKey(projectKey: string, payload: Partial<Project>) {
         const db = await getDB();
         if (payload.leadUserId === 0 || !payload.leadUserId) {
             delete payload.leadUserId;
@@ -187,12 +188,12 @@ export class ProjectRepository {
         return await db.get(`SELECT * FROM projects WHERE projectKey = :projectKey`, [projectKey]);
     }
 
-    async deleteProjectByKey(projectKey: string) {
+    static async deleteProjectByKey(projectKey: string) {
         const db = await getDB();
         return await db.run(`DELETE FROM projects WHERE projectKey = :projectKey`, [projectKey]);
     }
 
-    async addMembers(id: number, payload: { userIds: number[], role: ProjectRole }) {
+    static async addMembers(id: number, payload: { userIds: number[], role: ProjectRole }) {
         const db = await getDB();
         if (!payload.userIds.length) return;
 
@@ -217,7 +218,7 @@ export class ProjectRepository {
 
     }
 
-    async getProjectMembers(projectKey: string) {
+    static async getProjectMembers(projectKey: string) {
         const db = await getDB();
 
         return await db.all(`
@@ -235,7 +236,7 @@ export class ProjectRepository {
     `, projectKey);
     }
 
-    async findProjectMembers(projectKey: string, search: string) {
+    static async findProjectMembers(projectKey: string, search: string) {
         const db = await getDB();
         const searchClause = search
             ? `AND (u.name LIKE :search OR u.email LIKE :search)`
@@ -260,7 +261,7 @@ export class ProjectRepository {
         `, params);
     }
 
-    async removeMember(projectId: number, userId: number) {
+    static async removeMember(projectId: number, userId: number) {
         const db = await getDB();
         return await db.run(`DELETE FROM project_member WHERE projectId = :projectId AND userId = :userId`, [projectId, userId]);
     }

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { ProjectService } from "@/api/project.api";
 import {
   Breadcrumb,
   BreadcrumbList,
@@ -17,9 +18,21 @@ import { useAuthStore } from "@/stores/auth.store";
 import { UserRoleEnum } from "@/types/role";
 import { hasRole } from "@/utils/permission";
 import { UserIcon } from "lucide-vue-next";
+import { onMounted } from "vue";
 import { useRoute } from "vue-router";
 const auth = useAuthStore();
 const route = useRoute();
+
+const getScrumBoards = async (projectkey: string) => {
+  const {data: response, status} = await ProjectService.getBoards(projectkey);
+  if(status === 200) {
+    console.log(response);
+  }
+}
+
+onMounted(async ()=> {
+  await getScrumBoards(route.params.key as string);
+})
 </script>
 <template>
   <div class="mb-3">
@@ -63,9 +76,10 @@ const route = useRoute();
     </Button>
   </div>
   <div v-if="hasRole(auth.user?.role!, [UserRoleEnum.SYSTEM_ADMIN, UserRoleEnum.PROJECT_ADMIN])">
-    sprint & backlog
+    Sprint Accordion <br>
+    Backlog Accordion
   </div>
   <div>
-    active sprint
+    Active sprint
   </div>
 </template>

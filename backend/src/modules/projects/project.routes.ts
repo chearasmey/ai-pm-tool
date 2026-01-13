@@ -9,12 +9,7 @@ const controller = new ProjectController();
 
 router.use(authenticate);
 
-router.post(
-  "/",
-  validate(createProjectSchema),
-  controller.create
-);
-
+router.post("/", validate(createProjectSchema), controller.create);
 router.get("/", controller.list);
 router.get("/:projectKey", controller.getByKey);
 router.put("/:projectKey", controller.update);
@@ -22,5 +17,8 @@ router.delete("/:projectKey", controller.delete);
 router.post("/:projectKey/members", controller.addMembers);
 router.get("/:projectKey/members", controller.getProjectMembers);
 router.delete("/:projectKey/members/:userId", controller.removeMember);
+router.get("/:projectKey/boards", controller.getBoard);
+router.post("/:projectKey/issues", controller.createIssue);
+router.post("/:projectKey/sprints", controller.createSprint);
 
 export default router;

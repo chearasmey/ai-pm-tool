@@ -1,51 +1,51 @@
 import { getDB } from "../../config/db";
 import { User } from "../../modules/users/user.model";
 import { CreateUserRequestDTO, UpdateUserRequestDTO } from "./user.request.dto";
-import { UserResponseDTO } from "./user.response.dto";
 
-export const UserRepository = {
+export class UserRepository {
     /* ================================
        FIND
     ================================= */
 
-    async findById(id: number): Promise<User | null> {
+    static async findById(id: number): Promise<User | null> {
         const db = await getDB();
         const user = await db.get<User>(
             `SELECT * FROM users WHERE id = ?`,
             [id]
         );
         return user ?? null;
-    },
+    }
 
-    async findByUuid(uuid: string): Promise<User | null> {
+    static async findByUuid(uuid: string): Promise<User | null> {
         const db = await getDB();
         const user = await db.get<User>(
             `SELECT * FROM users WHERE uuid = ?`,
             [uuid]
         );
         return user ?? null;
-    },
+    }
 
-    async findByEmail(email: string): Promise<User | null> {
+    static async findByEmail(email: string): Promise<User | null> {
         const db = await getDB();
         const user = await db.get<User>(
             `SELECT * FROM users WHERE email = ?`,
             [email]
         );
         return user ?? null;
-    },
+    }
 
-    async findAll(): Promise<User[]> {
+    static async findAll(): Promise<User[]> {
         const db = await getDB();
         return db.all<User[]>(`SELECT * FROM users ORDER BY createdAt DESC`);
-    },
+    }
 
     /* ================================
        CREATE
     ================================= */
 
-    async create(input: CreateUserRequestDTO): Promise<User> {
+    static async create(input: CreateUserRequestDTO): Promise<User> {
         const db = await getDB();
+        console.log(input);
 
         const result = await db.run(
             `
@@ -69,13 +69,13 @@ export const UserRepository = {
             mfaEnabled: false,
             createdAt: new Date().toISOString()
         };
-    },
+    }
 
     /* ================================
        UPDATE
     ================================= */
 
-    async update(uuid: string, input: UpdateUserRequestDTO): Promise<User> {
+    static async update(uuid: string, input: UpdateUserRequestDTO): Promise<User> {
         const db = await getDB();
 
         const fields: string[] = [];
@@ -108,55 +108,55 @@ export const UserRepository = {
         );
 
         return this.findByUuid(uuid) as Promise<User>;
-    },
+    }
 
     /* ================================
        SECURITY
     ================================= */
 
-    async updatePassword(id: number, passwordHash: string): Promise<void> {
+    static async updatePassword(id: number, passwordHash: string): Promise<void> {
         const db = await getDB();
         await db.run(
             `UPDATE users SET passwordHash = ? WHERE id = ?`,
             [passwordHash, id]
         );
-    },
+    }
 
-    async revokeTokenVersion(id: number): Promise<void> {
+    static async revokeTokenVersion(id: number): Promise<void> {
         await this.saveRefreshToken(id, null);
         const db = await getDB();
         await db.run(
             `UPDATE users SET tokenVersion = tokenVersion + 1 WHERE id = ?`,
             [id]
         );
-    },
+    }
 
-    async resetTokenVersion(id: number): Promise<void> {
+    static async resetTokenVersion(id: number): Promise<void> {
         const db = await getDB();
         await db.run(
             `UPDATE users SET tokenVersion = 0 WHERE id = ?`,
             [id]
         );
-    },
+    }
 
-    async clearRefreshToken(refreshToken: string) {
+    static async clearRefreshToken(refreshToken: string) {
         const db = await getDB();
         return db.run(
             "UPDATE users SET refreshToken = NULL WHERE refreshToken = ?",
             refreshToken
         );
-    },
+    }
 
 
-    async saveRefreshToken(id: number, token: string | null): Promise<void> {
+    static async saveRefreshToken(id: number, token: string | null): Promise<void> {
         const db = await getDB();
         await db.run(
             `UPDATE users SET refreshToken = ? WHERE id = ?`,
             [token, id]
         );
-    },
+    }
 
-    async generateMFA(id: number, secret: string): Promise<void> {
+    static async generateMFA(id: number, secret: string): Promise<void> {
         const db = await getDB();
         await db.run(
             `
@@ -166,9 +166,9 @@ export const UserRepository = {
       `,
             [secret, id]
         );
-    },
+    }
 
-    async enableMFA(id: number): Promise<void> {
+    static async enableMFA(id: number): Promise<void> {
         const db = await getDB();
         await db.run(
             `
@@ -178,9 +178,9 @@ export const UserRepository = {
       `,
             [id]
         );
-    },
+    }
 
-    async disableMFA(id: number): Promise<void> {
+    static async disableMFA(id: number): Promise<void> {
         const db = await getDB();
         await db.run(
             `
@@ -190,13 +190,13 @@ export const UserRepository = {
       `,
             [id]
         );
-    },
+    }
 
     /* ================================
        DELETE / DISABLE
     ================================= */
 
-    async remove(id: number): Promise<void> {
+    static async remove(id: number): Promise<void> {
         const db = await getDB();
         await db.run(`DELETE FROM users WHERE id = ?`, [id]);
     }

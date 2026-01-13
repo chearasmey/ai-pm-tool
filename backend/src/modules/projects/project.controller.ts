@@ -66,4 +66,19 @@ export class ProjectController {
 
   }
 
+  async getBoard(req: Request, res: Response) {
+    const { projectKey } = req.params;
+    const user = req.user;
+    const boards = await service.getBoard(projectKey, user);
+    return successResponse(res, boards, "Get boards successfully", 200);
+  }
+
+  async createIssue(req: Request, res: Response) {
+
+  }
+
+  async createSprint(req: Request, res: Response) {
+
+  }
+
 }

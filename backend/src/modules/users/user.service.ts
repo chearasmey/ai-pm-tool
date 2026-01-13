@@ -2,15 +2,13 @@ import { UserRepository } from "./user.repository";
 import { hashPassword } from "../../utils/password";
 import { CreateUserRequestDTO, UpdateUserRequestDTO } from "./user.request.dto";
 import bcrypt from "bcrypt";
+import { AppError } from "../../errors/app.error";
 
 export const UserService = {
     async create(payload: CreateUserRequestDTO) {
         const existingUser = await UserRepository.findByEmail(payload.email);
         if (existingUser) {
-            const error = new Error("Email already in use");
-            error.statusCode = 400;
-            error.name = "EMAIL_IN_USE";
-            throw error;
+            throw new AppError("User's already exist", "USER_IN_USE", 400);
         }
         payload.password = await hashPassword(payload.password);
         return UserRepository.create({ ...payload});
@@ -20,11 +18,8 @@ export const UserService = {
     me: async (id: number) => await UserRepository.findById(id),
     updatePassword: async (userId: number, currentPassword: string, newPassword: string) => {
         const user = await UserRepository.findById(userId);
-        let error = new Error("Error");
         if (!user) {
-            error.name = "USER_NOT_FOUND";
-            error.message = "Invalid user!";
-            throw error;
+            throw new AppError("Invalid user!", "USER_NOT_FOUND", 400);
         }
 
         const match = await bcrypt.compare(
@@ -33,9 +28,8 @@ export const UserService = {
         );
 
         if (!match) {
-            error.name = "INVALID_PASSWORD";
-            error.message = "Current password is incorrect!"
-            throw error;
+            throw new AppError("Current password is incorrect!", "INVALID_PASSWORD", 400);
+
         }
 
         const hash = await hashPassword(newPassword);

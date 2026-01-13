@@ -1,11 +1,12 @@
 import { AppError } from "../../errors/app.error";
 import { ProjectRepository } from "./project.repository";
-import { ProjectInterface, ProjectRole, ProjectType } from "./project.type";
+import { ProjectRole, ProjectType } from "./project.type";
 import { UserRole } from "../../constants/role.enum";
+import { BoardRepository } from "./board.repository";
+import { BoardStatusRepository } from "./board-status.repository";
+import { Project } from "./project.model";
 
 export class ProjectService {
-    private readonly repo = new ProjectRepository();
-
     async createProject(
         user: { id: number; role: string },
         data: any
@@ -17,20 +18,27 @@ export class ProjectService {
             throw new AppError("No permission", "FORBIDDEN", 403);
         }
 
-        if (await this.repo.existsKey(data.projectKey)) {
+        if (await ProjectRepository.existsKey(data.projectKey)) {
             throw new AppError("Project key has aleady in use", "PROJECT_KEY_EXISTS", 409);
         }
 
-        return this.repo.create({
+        const project = await ProjectRepository.create({
             ...data,
             createdBy: user.id
         });
+
+        if(project) {
+            await BoardStatusRepository.seedDefaults(project.id, project.type);
+        }
+
+        return project;
+
     }
 
     async listProjects(user: { role: UserRole, id: number }, payload: any) {
         const { type, page = 1, limit = 10, search } = payload;
 
-        const result = await this.repo.listProjects({
+        const result = await ProjectRepository.listProjects({
             type: type as ProjectType,
             userId: user.id,
             role: user.role,
@@ -46,43 +54,50 @@ export class ProjectService {
     }
 
     async getProjectByKey(projectKey: string, currentUser: { role: UserRole, id: number }) {
-        const project = await this.repo.findByKey(projectKey);
+        const project = await ProjectRepository.findByKey(projectKey);
         if (!project) throw new AppError("Project not found", "PROJECT_NOT_FOUND", 404);
         if (currentUser.role !== "system_admin" && project.createdBy !== currentUser.id) throw new AppError("No permission to get project detail", "NO_PERMISSION", 403);
         return project;
     }
 
-    async update(projectKey: string, payload: ProjectInterface, currentUser: { role: UserRole, id: number }) {
-        const project = await this.repo.findByKey(projectKey);
+    async update(projectKey: string, payload: Project, currentUser: { role: UserRole, id: number }) {
+        const project = await ProjectRepository.findByKey(projectKey);
         if (!project) throw new AppError("Project not found", "PROJECT_NOT_FOUND", 404);
         if (currentUser.role !== "system_admin" && project.createdBy !== currentUser.id) throw new AppError("No permission to get project detail", "NO_PERMISSION", 403);
-        return await this.repo.updateProjectByKey(projectKey, payload);
+        return await ProjectRepository.updateProjectByKey(projectKey, payload);
     }
 
     async delete(projectKey: string, currentUser: { role: UserRole, id: number }) {
-        const project = await this.repo.findByKey(projectKey);
+        const project = await ProjectRepository.findByKey(projectKey);
         if (!project) throw new AppError("Project not found", "PROJECT_NOT_FOUND", 404);
         if (currentUser.role !== "system_admin" && project.createdBy !== currentUser.id) throw new AppError("No permission to get project detail", "NO_PERMISSION", 403);
-        return await this.repo.deleteProjectByKey(projectKey);
+        return await ProjectRepository.deleteProjectByKey(projectKey);
     }
 
     async addMembers(projectKey: string, currentUser: { role: UserRole, id: number }, payload: { userIds: number[], role: ProjectRole }) {
-        const project = await this.repo.findByKey(projectKey);
+        const project = await ProjectRepository.findByKey(projectKey);
         if (!project) throw new AppError("Project not found", "PROJECT_NOT_FOUND", 404);
         if (currentUser.role !== "system_admin" && project.createdBy !== currentUser.id) throw new AppError("No permission to get project detail", "NO_PERMISSION", 403);
-        return await this.repo.addMembers(project.id, payload);
+        return await ProjectRepository.addMembers(project.id, payload);
     }
 
     async getProjectMembers(projectKey: string, search?: string) {
-        const project = await this.repo.findByKey(projectKey);
-        if (!project) throw new AppError("Project not found", "PROJECT_NOT_FOUND", 404);        
-        return search ? await this.repo.findProjectMembers(projectKey, search) : await this.repo.getProjectMembers(projectKey);
+        const project = await ProjectRepository.findByKey(projectKey);
+        if (!project) throw new AppError("Project not found", "PROJECT_NOT_FOUND", 404);
+        return search ? await ProjectRepository.findProjectMembers(projectKey, search) : await ProjectRepository.getProjectMembers(projectKey);
     }
 
     async removeMember(projectKey: string, currentUser: { role: UserRole, id: number }, userId: number) {
-        const project = await this.repo.findByKey(projectKey);
+        const project = await ProjectRepository.findByKey(projectKey);
         if (!project) throw new AppError("Project not found", "PROJECT_NOT_FOUND", 404);
         if (currentUser.role !== "system_admin" && project.createdBy !== currentUser.id) throw new AppError("No permission to get project detail", "NO_PERMISSION", 403);
-        return await this.repo.removeMember(project.id, userId);
+        return await ProjectRepository.removeMember(project.id, userId);
+    }
+
+    async getBoard(projectKey: string, currentUser: { role: UserRole, id: number }) {
+        const project = await ProjectRepository.findByKey(projectKey);
+        if (!project) throw new AppError("Project not found", "PROJECT_NOT_FOUND", 404);
+        if (currentUser.role !== "system_admin" && project.createdBy !== currentUser.id) throw new AppError("No permission to get project detail", "NO_PERMISSION", 403);
+        return project.type == ProjectType.SCRUM ? await BoardRepository.getScrumBoardByProjectKey(projectKey) : await BoardRepository.getBoardByProjectKey(project.id);
     }
 }

@@ -1,8 +1,5 @@
 import { UUID } from "node:crypto";
 import { UserRole } from "../../constants/role.enum";
-
-// export type UserRole = "system_admin" | "project_admin" | "normal";
-
 export interface User {
     id: number;
     uuid?: UUID
