@@ -2,9 +2,8 @@ import { AppError } from "../../errors/app.error";
 import { ProjectRepository } from "./project.repository";
 import { ProjectRole, ProjectType } from "./project.type";
 import { UserRole } from "../../constants/role.enum";
-import { BoardRepository } from "./board.repository";
-import { BoardStatusRepository } from "./board-status.repository";
 import { Project } from "./project.model";
+import { BoardStatusRepository } from "../board-status/board-status.repository";
 
 export class ProjectService {
     async createProject(
@@ -98,6 +97,6 @@ export class ProjectService {
         const project = await ProjectRepository.findByKey(projectKey);
         if (!project) throw new AppError("Project not found", "PROJECT_NOT_FOUND", 404);
         if (currentUser.role !== "system_admin" && project.createdBy !== currentUser.id) throw new AppError("No permission to get project detail", "NO_PERMISSION", 403);
-        return project.type == ProjectType.SCRUM ? await BoardRepository.getScrumBoardByProjectKey(projectKey) : await BoardRepository.getBoardByProjectKey(project.id);
+        return project.type == ProjectType.SCRUM ? await BoardStatusRepository.getScrumBoardByProjectKey(projectKey) : await BoardStatusRepository.getBoardByProjectKey(project.id);
     }
 }

@@ -35,7 +35,4 @@ export class ProjectService {
     return await api.delete(`/projects/${projectKey}/members/${userId}`);
   }
 
-  static async getBoards(projectKey: string) {
-    return await api.get(`/projects/${projectKey}/boards`);
-  }
 }

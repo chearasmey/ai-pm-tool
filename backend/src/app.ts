@@ -8,6 +8,8 @@ import { UserService } from "./modules/users/user.service";
 import { errorResponse } from "./utils/response";
 import { UserRole } from "./constants/role.enum";
 import cors from "cors";
+import boardStatusRoutes from "./modules/board-status/board-status.routes";
+import issueRoutes from "./modules/issue/issue.routes";
 
 
 const app = express();
@@ -55,7 +57,9 @@ app.get("/", async (req, res) => {
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/mfa", mfaRoutes);
-app.use("/api/projects", projectRoutes)
+app.use("/api/projects", projectRoutes);
+app.use("/api/boards", boardStatusRoutes);
+app.use("/api/issues", issueRoutes);
 
 app.use(errorMiddleware);
 

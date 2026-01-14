@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { ProjectService } from "@/api/project.api";
-import type { ProjectTypeEnum } from "@/types/projectTypeEnum";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -15,6 +14,7 @@ import {
 } from "@/components/ui/breadcrumb";
 import { generateProjectKey } from "@/utils/projectKey";
 import { toastStore } from "@/components/ui/toast/toast.store";
+import type { ProjectTypeEnum } from "@/types/project";
 
 const props = defineProps<{
   type: ProjectTypeEnum;

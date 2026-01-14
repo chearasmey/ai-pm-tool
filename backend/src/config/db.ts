@@ -103,7 +103,7 @@ export const getDB = async (): Promise<Database> => {
   `);
   
   await dbInstance.exec(`
-    CREATE TABLE IF NOT EXISTS issue (
+    CREATE TABLE IF NOT EXISTS issues (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       projectId INTEGER NOT NULL,
       sprintId INTEGER,
@@ -120,10 +120,10 @@ export const getDB = async (): Promise<Database> => {
       FOREIGN KEY(parentId) REFERENCES issue(id) ON DELETE SET NULL
     );
 
-    CREATE INDEX IF NOT EXISTS idx_issue_project ON issue(projectId);
-    CREATE INDEX IF NOT EXISTS idx_issue_parent ON issue(parentId);
-    CREATE INDEX IF NOT EXISTS idx_issue_status ON issue(statusId);
-    CREATE INDEX IF NOT EXISTS idx_issue_sprint ON issue(sprintId);
+    CREATE INDEX IF NOT EXISTS idx_issue_project ON issues(projectId);
+    CREATE INDEX IF NOT EXISTS idx_issue_parent ON issues(parentId);
+    CREATE INDEX IF NOT EXISTS idx_issue_status ON issues(statusId);
+    CREATE INDEX IF NOT EXISTS idx_issue_sprint ON issues(sprintId);
 
   `);
 

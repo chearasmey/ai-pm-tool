@@ -265,4 +265,14 @@ export class ProjectRepository {
         const db = await getDB();
         return await db.run(`DELETE FROM project_member WHERE projectId = :projectId AND userId = :userId`, [projectId, userId]);
     }
+
+    static async getUserRoleInProject(projectId: number, userId: number): Promise<ProjectRole | null> {
+        const db = await getDB();
+        const result = await db.get(
+            `SELECT role FROM project_member WHERE projectId = ? AND userId = ?`,
+            projectId,
+            userId
+        );
+        return result ? result.role : null;
+    }
 }

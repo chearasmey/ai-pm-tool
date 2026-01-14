@@ -117,7 +117,7 @@ onMounted(async () => {
           <TableHead>Key</TableHead>
           <TableHead>Lead</TableHead>
           <TableHead>Last work update</TableHead>
-          <TableHead>Action</TableHead>
+          <TableHead v-if="hasRole(auth.user?.role!, [UserRoleEnum.SYSTEM_ADMIN, UserRoleEnum.PROJECT_ADMIN])">Action</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -128,7 +128,7 @@ onMounted(async () => {
           <TableCell>{{ project.projectKey }}</TableCell>
           <TableCell>{{ project.leadUserName ?? "-" }}</TableCell>
           <TableCell>{{ formatRelativeDate(project.updatedAt ?? "-") }}</TableCell>
-          <TableCell>
+          <TableCell v-if="hasRole(auth.user?.role!, [UserRoleEnum.SYSTEM_ADMIN, UserRoleEnum.PROJECT_ADMIN])">
             <DropdownMenu>
               <DropdownMenuTrigger
                 class="flex flex-col justify-center font-bold hover:bg-gray-200 px-2 pb-2 rounded-sm"

@@ -18,21 +18,145 @@ import { useAuthStore } from "@/stores/auth.store";
 import { UserRoleEnum } from "@/types/role";
 import { hasRole } from "@/utils/permission";
 import { UserIcon } from "lucide-vue-next";
-import { onMounted } from "vue";
+import { computed, onMounted, ref } from "vue";
 import { useRoute } from "vue-router";
+import KanbanColumn from "@/components/KanbanColumn.vue";
+import type { ProjectInterface } from "@/types/project";
+import AddStatusDialog from "@/components/AddStatusDialog.vue";
+import { BoardStatusService } from "@/api/board-status.api";
+import RenameStatusDialog from "@/components/RenameStatusDialog.vue";
+import RemoveStatusDialog from "@/components/RemoveStatusDialog.vue";
 const auth = useAuthStore();
 const route = useRoute();
 
-const getKanbanBoards = async (projectkey: string) => {
-  const {data: response, status} = await ProjectService.getBoards(projectkey);
-  if(status === 200) {
-    console.log(response);
+type StatusCategory = "TODO" | "IN_PROGRESS" | "DONE";
+type BoardStatus = {
+  id: number;
+  name: string;
+  category: StatusCategory;
+  position: number;
+  issues?: Issue[];
+};
+type Issue = {
+  id: number;
+  title: string;
+  type: string;
+  assigneeName?: string | null;
+  statusId: number;
+};
+
+const project = ref<ProjectInterface>();
+
+// state
+const statuses = ref<BoardStatus[]>([]);
+const issues = ref<Issue[]>([]);
+const loading = ref(false);
+
+// dialogs
+const showAdd = ref(false);
+const showRename = ref(false);
+const renameTarget = ref<BoardStatus | null>(null);
+const showRemove = ref(false);
+const removeTarget = ref<BoardStatus | null>(null);
+const projectKey = computed(() => route.params.key as string);
+
+// DONE columns must be at end
+const orderedStatuses = computed(() => {
+  const s = [...statuses.value];
+  s.sort((a, b) => {
+    // non-DONE first, DONE last
+    const aDone = a.category === "DONE" ? 1 : 0;
+    const bDone = b.category === "DONE" ? 1 : 0;
+    if (aDone !== bDone) return aDone - bDone;
+
+    // within same category group, by position then id
+    if (a.position !== b.position) return a.position - b.position;
+    return a.id - b.id;
+  });
+  return s;
+});
+
+const issuesByStatusId = (id: number): Issue[] => {
+  const find = statuses.value.find((st) => st.id === id);
+  if (!find) return [];
+  return find?.issues || [];
+};
+
+const loadKanbanBoard = async (projectkey: string) => {
+  loading.value = true;
+  try {
+    const { data: response, status } = await BoardStatusService.getBoards(projectkey);
+    if (status === 200) {
+      statuses.value = response.data.columns;
+      project.value = response.data.project;
+      issues.value = response.data.issues;
+    }
+  } catch (error) {
+    console.error("Failed to fetch kanban boards:", error);
+  } finally {
+    loading.value = false;
+  }
+};
+
+onMounted(async () => {
+  await loadKanbanBoard(projectKey.value);
+});
+
+async function onDropIssue(payload: { issueId: number; toStatusId: number }) {
+  // optimistic UI
+  const issue = issues.value.find((i) => i.id === payload.issueId);
+  if (!issue) return;
+
+  const prevStatusId = issue.statusId;
+  issue.statusId = payload.toStatusId;
+
+  try {
+    // await apiMoveIssue(payload.issueId, payload.toStatusId);
+  } catch (e) {
+    // rollback
+    issue.statusId = prevStatusId;
+    console.error(e);
   }
 }
 
-onMounted(async ()=> {
-  await getKanbanBoards(route.params.key as string);
-})
+function openRename(status: BoardStatus) {
+  renameTarget.value = status;
+  showRename.value = true;
+}
+
+const handleCreateStatus = async (payload: {
+  name: string;
+  category: StatusCategory;
+}) => {
+  const { status } = await BoardStatusService.createBoardStatus(
+    projectKey.value,
+    payload
+  );
+  if (status === 201) {
+    await loadKanbanBoard(projectKey.value);
+  }
+};
+
+const handleRenameStatus = async (payload: { statusId: number; name: string }) => {
+  if (!renameTarget.value) return;
+  const { status } = await BoardStatusService.updateBoardStatus(
+    projectKey.value,
+    payload
+  );
+  if (status === 200) {
+    showRename.value = false;
+    await loadKanbanBoard(projectKey.value);
+  }
+};
+
+const handleRemoveStatus = async (statusId: number) => {
+  showRemove.value = true;
+  removeTarget.value = statuses.value.find((s) => s.id === statusId) || null;
+};
+
+const onStatusRemoved = async () => {
+  await loadKanbanBoard(projectKey.value);
+};
 </script>
 <template>
   <div class="mb-3">
@@ -50,13 +174,17 @@ onMounted(async ()=> {
   </div>
   <div class="flex justify-between">
     <div class="flex items-center gap-2 mb-4">
-      <h1 class="text-2xl font-semibold uppercase">Kanban Board</h1>
+      <h1 class="text-2xl font-semibold uppercase">{{ project?.name }}</h1>
 
-      <div class="hover:bg-gray-200 p-2 rounded-sm">
-        <router-link :to="`/kanban/board/${route.params.key}/people`"><UserIcon /></router-link>
+      <div class="hover:bg-gray-200 p-1 rounded-sm">
+        <router-link :to="`/kanban/board/${route.params.key}/people`"
+          ><UserIcon
+        /></router-link>
       </div>
 
-      <DropdownMenu v-if="hasRole(auth.user?.role!, [UserRoleEnum.SYSTEM_ADMIN, UserRoleEnum.PROJECT_ADMIN])">
+      <DropdownMenu
+        v-if="hasRole(auth.user?.role!, [UserRoleEnum.SYSTEM_ADMIN, UserRoleEnum.PROJECT_ADMIN])"
+      >
         <DropdownMenuTrigger
           class="flex flex-col justify-center font-bold hover:bg-gray-200 px-2 pb-2 rounded-sm"
           title="More actions"
@@ -75,7 +203,55 @@ onMounted(async ()=> {
       <router-link to="#">Create</router-link>
     </Button>
   </div>
-  <div>
-    Board Content
+
+  <div class="p-6 space-y-4">
+    <div class="flex items-center justify-between">
+      <div></div>
+
+      <Button
+        variant="outline"
+        v-if="hasRole(auth.user?.role!, [UserRoleEnum.SYSTEM_ADMIN, UserRoleEnum.PROJECT_ADMIN])"
+        class="px-3 py-2 rounded border hover:bg-muted"
+        @click="showAdd = true"
+      >
+        + Add column
+      </Button>
+    </div>
+
+    <div v-if="loading" class="text-sm text-muted-foreground">Loading...</div>
+
+    <div class="flex gap-4 overflow-x-auto pb-2">
+      <KanbanColumn
+        v-for="st in orderedStatuses"
+        :key="st.id"
+        :status="st"
+        :issues="issuesByStatusId(st.id) || []"
+        @drop-issue="onDropIssue"
+        @rename="openRename"
+        @delete="handleRemoveStatus"
+      />
+
+      <AddStatusDialog
+        :open="showAdd"
+        @close="showAdd = false"
+        @submit="handleCreateStatus"
+      />
+
+      <RenameStatusDialog
+        :open="showRename"
+        :status="renameTarget"
+        @close="showRename = false"
+        @submit="handleRenameStatus"
+      />
+
+      <RemoveStatusDialog
+        :open="showRemove"
+        :projectKey="projectKey"
+        :status="removeTarget"
+        :statuses="statuses"
+        @close="showRemove = false"
+        @removed="onStatusRemoved"
+      />
+    </div>
   </div>
 </template>
