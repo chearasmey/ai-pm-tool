@@ -1,4 +1,11 @@
 <script setup lang="ts">
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from "@/components/ui/dropdown-menu";
+
 type Issue = {
   id: number;
   title: string;
@@ -7,12 +14,16 @@ type Issue = {
   statusId: number;
 };
 const props = defineProps<{ issue: Issue }>();
+const emit = defineEmits<{
+  (e: "view", issueId: number): void;
+  (e: "remove", issueId: number): void;
+}>();
 
 function onDragStart(e: DragEvent) {
   e.dataTransfer?.setData("text/plain", String(props.issue.id));
   e.dataTransfer?.setData(
     "application/x-kanban-issue",
-    JSON.stringify({ id: props.issue.id })
+    JSON.stringify({ id: props.issue.id, statusId: props.issue.statusId })
   );
   e.dataTransfer!.effectAllowed = "move";
 }
@@ -31,7 +42,23 @@ function onDragStart(e: DragEvent) {
           {{ issue.type }} • {{ issue.assigneeName || "Unassigned" }}
         </p>
       </div>
-      <span class="text-xs text-muted-foreground">#{{ issue.id }}</span>
+      
+      <div class="text-xs text-muted-foreground">
+        <DropdownMenu>
+          <DropdownMenuTrigger
+            class="flex flex-col justify-center font-bold hover:bg-gray-200 px-2 pb-2 rounded-sm"
+            title="More actions"
+            >...</DropdownMenuTrigger
+          >
+          <DropdownMenuContent>
+            <DropdownMenuItem @click="emit('view', issue.id)">
+              View/Edit
+            </DropdownMenuItem>
+            <DropdownMenuItem @click="emit('remove', issue.id)"> Remove </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+        <span>#{{ issue.id }}</span>
+      </div>
     </div>
   </div>
 </template>

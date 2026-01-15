@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { BoardStatusService } from "@/api/board-status.api";
 import { IssueService } from "@/api/issue.api";
-import { computed, onMounted, ref, watch } from "vue";
+import { computed, ref, watch } from "vue";
 
 type StatusCategory = "TODO" | "IN_PROGRESS" | "DONE";
 

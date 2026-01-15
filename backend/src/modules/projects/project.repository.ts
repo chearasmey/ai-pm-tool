@@ -218,7 +218,7 @@ export class ProjectRepository {
 
     }
 
-    static async getProjectMembers(projectKey: string) {
+    static async listProjectMembers(id: number) {
         const db = await getDB();
 
         return await db.all(`
@@ -231,9 +231,9 @@ export class ProjectRepository {
       FROM project_member pm
       JOIN projects p ON p.id = pm.projectId
       JOIN users u ON u.id = pm.userId
-      WHERE p.projectKey = ?
+      WHERE p.id = ?
       ORDER BY pm.createdAt ASC
-    `, projectKey);
+    `, id);
     }
 
     static async findProjectMembers(projectKey: string, search: string) {
@@ -274,5 +274,45 @@ export class ProjectRepository {
             userId
         );
         return result ? result.role : null;
+    }
+
+    static async isUserInProject(projectId: number, userId: number): Promise<boolean> {
+        const db = await getDB();
+        const result = await db.get(
+            `SELECT 1 FROM project_member WHERE projectId = ? AND userId = ?`,
+            projectId,
+            userId
+        );
+        return !!result;
+    }
+
+    static async getDefaultStatusId(projectId: number): Promise<number> {
+        const db = await getDB();
+        const result = await db.get(
+            `SELECT id FROM board_status WHERE projectId = ? ORDER BY createdAt ASC LIMIT 1`,
+            projectId
+        );
+        return result.id;
+    }
+
+    static async isStatusInProject(projectId: number, statusId: number): Promise<boolean> {
+        const db = await getDB();
+        const result = await db.get(
+            `SELECT 1 FROM board_status WHERE projectId = ? AND id = ?`,
+            projectId,
+            statusId
+        );
+        return !!result;
+    }
+
+    static async listStatuses(projectId: number) {
+        const db = await getDB();
+        return await db.all(
+            `SELECT *
+       FROM board_status
+       WHERE projectId = ?
+       ORDER BY position ASC, id ASC`,
+            projectId
+        );
     }
 }

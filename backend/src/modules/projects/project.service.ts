@@ -83,7 +83,7 @@ export class ProjectService {
     async getProjectMembers(projectKey: string, search?: string) {
         const project = await ProjectRepository.findByKey(projectKey);
         if (!project) throw new AppError("Project not found", "PROJECT_NOT_FOUND", 404);
-        return search ? await ProjectRepository.findProjectMembers(projectKey, search) : await ProjectRepository.getProjectMembers(projectKey);
+        return search ? await ProjectRepository.findProjectMembers(projectKey, search) : await ProjectRepository.listProjectMembers(project.id);
     }
 
     async removeMember(projectKey: string, currentUser: { role: UserRole, id: number }, userId: number) {

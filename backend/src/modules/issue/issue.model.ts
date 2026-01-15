@@ -9,7 +9,7 @@ export enum IssueType {
 export interface Issue {
     id: number;
     projectId: number;
-    springId: number;
+    springId?: number;
     parentId?: number;
     type: IssueType;
     title: string;

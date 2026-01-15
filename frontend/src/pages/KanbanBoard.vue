@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { ProjectService } from "@/api/project.api";
 import {
   Breadcrumb,
   BreadcrumbList,
@@ -26,6 +25,10 @@ import AddStatusDialog from "@/components/AddStatusDialog.vue";
 import { BoardStatusService } from "@/api/board-status.api";
 import RenameStatusDialog from "@/components/RenameStatusDialog.vue";
 import RemoveStatusDialog from "@/components/RemoveStatusDialog.vue";
+import CreateIssueDialog from "@/components/CreateIssueDialog.vue";
+import { IssueService } from "@/api/issue.api";
+import IssueViewDialog from "@/components/IssueViewDialog.vue";
+import { toastStore } from "@/components/ui/toast/toast.store";
 const auth = useAuthStore();
 const route = useRoute();
 
@@ -49,7 +52,6 @@ const project = ref<ProjectInterface>();
 
 // state
 const statuses = ref<BoardStatus[]>([]);
-const issues = ref<Issue[]>([]);
 const loading = ref(false);
 
 // dialogs
@@ -59,6 +61,9 @@ const renameTarget = ref<BoardStatus | null>(null);
 const showRemove = ref(false);
 const removeTarget = ref<BoardStatus | null>(null);
 const projectKey = computed(() => route.params.key as string);
+const showCreate = ref(false);
+const showIssueView = ref(false);
+const issueIdView = ref<number>(0);
 
 // DONE columns must be at end
 const orderedStatuses = computed(() => {
@@ -89,7 +94,6 @@ const loadKanbanBoard = async (projectkey: string) => {
     if (status === 200) {
       statuses.value = response.data.columns;
       project.value = response.data.project;
-      issues.value = response.data.issues;
     }
   } catch (error) {
     console.error("Failed to fetch kanban boards:", error);
@@ -102,19 +106,18 @@ onMounted(async () => {
   await loadKanbanBoard(projectKey.value);
 });
 
-async function onDropIssue(payload: { issueId: number; toStatusId: number }) {
-  // optimistic UI
-  const issue = issues.value.find((i) => i.id === payload.issueId);
-  if (!issue) return;
-
-  const prevStatusId = issue.statusId;
-  issue.statusId = payload.toStatusId;
-
+async function onDropIssue(payload: {
+  issueId: number;
+  currentStatusId: number;
+  toStatusId: number;
+}) {
   try {
-    // await apiMoveIssue(payload.issueId, payload.toStatusId);
+    const { status } = await IssueService.moveIssue(payload.issueId, payload.toStatusId);
+    if (status === 200) {
+      await loadKanbanBoard(projectKey.value);
+    }
   } catch (e) {
     // rollback
-    issue.statusId = prevStatusId;
     console.error(e);
   }
 }
@@ -157,6 +160,32 @@ const handleRemoveStatus = async (statusId: number) => {
 const onStatusRemoved = async () => {
   await loadKanbanBoard(projectKey.value);
 };
+
+const handleCreateIssue = async () => {
+  showCreate.value = true;
+};
+
+const onCreateIssue = async (message: string) => {
+  showCreate.value = false;
+  toastStore.show(message, "success");
+  await loadKanbanBoard(projectKey.value);
+};
+
+const handleViewIssue = async (issueId: number) => {
+  issueIdView.value = issueId;
+  showIssueView.value = true;
+};
+
+const onUpdatedIssue = async (message: string) => {
+  showIssueView.value = false;
+  toastStore.show(message, "success");
+  await loadKanbanBoard(projectKey.value);
+};
+
+const handleRemoveIssue = async () => {
+  await loadKanbanBoard(projectKey.value);
+};
+
 </script>
 <template>
   <div class="mb-3">
@@ -200,7 +229,7 @@ const onStatusRemoved = async () => {
       </DropdownMenu>
     </div>
     <Button variant="outline" as-child>
-      <router-link to="#">Create</router-link>
+      <router-link to="#" @click="handleCreateIssue">Create</router-link>
     </Button>
   </div>
 
@@ -229,6 +258,8 @@ const onStatusRemoved = async () => {
         @drop-issue="onDropIssue"
         @rename="openRename"
         @delete="handleRemoveStatus"
+        @view="handleViewIssue"
+        @is-removed-issue="handleRemoveIssue"
       />
 
       <AddStatusDialog
@@ -251,6 +282,21 @@ const onStatusRemoved = async () => {
         :statuses="statuses"
         @close="showRemove = false"
         @removed="onStatusRemoved"
+      />
+
+      <CreateIssueDialog
+        :open="showCreate"
+        :project-key="projectKey"
+        @close="showCreate = false"
+        @created="onCreateIssue"
+      />
+
+      <IssueViewDialog
+        :open="showIssueView"
+        :project-key="projectKey"
+        :issue-id="issueIdView"
+        @close="showIssueView = false"
+        @updated="onUpdatedIssue"
       />
     </div>
   </div>

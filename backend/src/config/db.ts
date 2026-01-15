@@ -111,13 +111,19 @@ export const getDB = async (): Promise<Database> => {
       type TEXT CHECK(type IN ('EPIC','STORY','TASK','BUG','SUBTASK')) NOT NULL,
       title TEXT NOT NULL,
       description TEXT,
+      startDate TEXT,
+      dueDate TEXT,
+      originalEstimate INTEGER,
+      remainingEstimate INTEGER,
+      timeSpent INTEGER,
+      priority TEXT CHECK(priority IN ('LOW','MEDIUM','HIGH','URGENT')) DEFAULT 'MEDIUM',
       statusId INTEGER NOT NULL,
       assigneeId INTEGER,
       createdBy INTEGER NOT NULL,
       createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
       updatedAt TEXT DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY(statusId) REFERENCES board_status(id)
-      FOREIGN KEY(parentId) REFERENCES issue(id) ON DELETE SET NULL
+      FOREIGN KEY(parentId) REFERENCES issues(id) ON DELETE SET NULL
     );
 
     CREATE INDEX IF NOT EXISTS idx_issue_project ON issues(projectId);
