@@ -100,4 +100,38 @@ export class IssueRepository {
             throw new AppError("Failed to delete issue: " + error.message, "DELETE_ISSUE_FAILED", 500);
         }
     }
+
+    static async listByProject(projectId: number) {
+        const db = await getDB();
+        return db.all(
+            `
+      SELECT
+        i.*,
+        u.name AS assigneeName,
+        bs.name AS statusName
+      FROM issues i
+      LEFT JOIN users u ON u.id = i.assigneeId
+      LEFT JOIN board_status bs ON bs.id = i.statusId
+      WHERE i.projectId = ?
+      ORDER BY i.createdAt DESC
+      `,
+            projectId
+        );
+    }
+
+    static async updateSprint(issueId: number, sprintId: number | null) {
+        const db = await getDB();
+        await db.run(
+        `
+        UPDATE issue
+        SET sprintId = ?, updatedAt = CURRENT_TIMESTAMP
+        WHERE id = ?
+        `,
+        sprintId,
+        issueId
+        );
+        return this.findById(issueId);
+    }
+
+    
 }

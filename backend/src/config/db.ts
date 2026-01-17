@@ -71,7 +71,7 @@ export const getDB = async (): Promise<Database> => {
   `);
 
   await dbInstance.exec(`
-    CREATE TABLE IF NOT EXISTS sprint (
+    CREATE TABLE IF NOT EXISTS sprints (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       projectId INTEGER NOT NULL,
       name TEXT NOT NULL,
@@ -84,7 +84,7 @@ export const getDB = async (): Promise<Database> => {
       updatedAt TEXT DEFAULT CURRENT_TIMESTAMP
     );
 
-    CREATE INDEX IF NOT EXISTS idx_sprint_project ON sprint(projectId);
+    CREATE INDEX IF NOT EXISTS idx_sprint_project ON sprints(projectId);
   `);
 
   await dbInstance.exec(`

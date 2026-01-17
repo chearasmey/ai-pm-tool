@@ -6,12 +6,34 @@ import { BoardStatusRepository } from "./board-status.repository";
 import { isAllowedGlobal } from "../../utils/authorization";
 import { BoardStatusCategory } from "./board-status.model";
 import { getDB } from "../../config/db";
+import { SprintRepository } from "../sprint/sprint.repository";
+import { IssueRepository } from "../issue/issue.repository";
 
 export class BoardStatusService {
     async getBoard(projectKey: string, currentUser: { role: UserRole, id: number }) {
         const project = await ProjectRepository.findByKey(projectKey);
         if (!project) throw new AppError("Project not found", "PROJECT_NOT_FOUND", 404);
-        return project.type == ProjectType.SCRUM ? await BoardStatusRepository.getScrumBoardByProjectKey(projectKey) : await BoardStatusRepository.getBoardByProjectKey(project.id);
+
+        await this.requireProjectAccess(project.id, currentUser);
+
+        if (project.type == ProjectType.SCRUM) {
+            const [statuses, sprints, issues] = await Promise.all([
+                BoardStatusRepository.listByProject(project.id),
+                SprintRepository.listByProject(project.id),
+                IssueRepository.listByProject(project.id)
+            ]);
+
+            const backlogIssues = issues.filter(issue => issue.sprintId === null);
+            const sprintIssuesMap: Record<number, any[]> = {};
+            for (const sprint of sprints) sprintIssuesMap[sprint.id] = [];
+            for (const issue of issues) {
+                if (issue.sprintId !== null && sprintIssuesMap[issue.sprintId]) {
+                    sprintIssuesMap[issue.sprintId].push(issue);
+                }
+            }
+            return { project, statuses, sprints, backlogIssues, sprintIssuesMap };
+        }
+        return await BoardStatusRepository.getBoardByProjectKey(project.id);
     }
 
     async createBoardStatus(projectKey: string, payload: { name: string; category: string }, currentUser: { role: UserRole, id: number }) {
@@ -85,5 +107,11 @@ export class BoardStatusService {
         await BoardStatusRepository.remove(statusId);
         return { movedIssues: 0, movedToStatusId: null };
 
+    }
+
+    private async requireProjectAccess(projectId: number, currentUser: { role: UserRole, id: number }) {
+        if (isAllowedGlobal(currentUser.role)) return;
+        const isMember = await ProjectRepository.isUserInProject(projectId, currentUser.id);
+        if (!isMember) throw new AppError("No permission to access project", "NO_PERMISSION", 403);
     }
 }

@@ -48,7 +48,8 @@ export class BoardStatusRepository {
                 ]
                 : [
                     { name: "To Do", category: "TODO", position: 1 },
-                    { name: "Done", category: "DONE", position: 2 }
+                    { name: "In Progress", category: "IN_PROGRESS", position: 2 },
+                    { name: "Done", category: "DONE", position: 3 }
                 ];
 
         const stmt = await db.prepare(`
@@ -379,6 +380,18 @@ export class BoardStatusRepository {
     static async remove(statusId: number) {
         const db = await getDB();
         await db.run(`DELETE FROM board_status WHERE id = ?`, statusId);
+    }
+
+    static async listByProject(projectId: number): Promise<BoardStatus[]> {
+        const db = await getDB();
+        const rows = await db.all(
+            `SELECT id, projectId, name, category, position, createdAt, updatedAt
+       FROM board_status
+       WHERE projectId = ?
+       ORDER BY position ASC, id ASC`,
+            projectId
+        );
+        return rows;
     }
 
 }

@@ -10,6 +10,7 @@ import { UserRole } from "./constants/role.enum";
 import cors from "cors";
 import boardStatusRoutes from "./modules/board-status/board-status.routes";
 import issueRoutes from "./modules/issue/issue.routes";
+import sprintRoutes from "./modules/sprint/sprint.routes";
 
 
 const app = express();
@@ -60,6 +61,7 @@ app.use("/api/mfa", mfaRoutes);
 app.use("/api/projects", projectRoutes);
 app.use("/api/boards", boardStatusRoutes);
 app.use("/api/issues", issueRoutes);
+app.use("/api/sprints", sprintRoutes)
 
 app.use(errorMiddleware);
 
