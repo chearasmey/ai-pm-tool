@@ -20,7 +20,7 @@ const props = defineProps<{ issues: Issue[]; projectKey: string }>();
 
 const emit = defineEmits<{
   (e: "create-sprint"): void;
-  (e: "drop-to-backlog", ev: DragEvent): void;
+  (e: "drop-to-backlog", issueId: number): void;
   (e: "updated"): void;
   (e: "deleted"): void;
 }>();
@@ -31,6 +31,13 @@ const issueIdView = ref<number>(0);
 
 function onDragOver(e: DragEvent) {
   e.preventDefault();
+}
+
+function onDrop(e: DragEvent) {
+  const raw = e.dataTransfer?.getData("text/plain");  
+  if (!raw) return;
+  const issueId = Number(raw);
+  emit("drop-to-backlog", issueId);
 }
 
 function handleIssueView(issueId: number) {
@@ -71,7 +78,7 @@ function handleDeletedIssue(payload: { deletedCount: number; deletedIds: number[
     </div>
 
     <!-- Drop zone -->
-    <div class="p-4" @dragover="onDragOver" @drop="emit('drop-to-backlog', $event)">
+    <div class="p-4" @dragover="onDragOver" @drop="onDrop">
       <div class="space-y-2 min-h-15">
         <KanbanIssueCard
           v-for="it in issues"

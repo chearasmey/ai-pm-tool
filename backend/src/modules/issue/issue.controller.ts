@@ -23,10 +23,16 @@ export class IssueController {
         return successResponse(res, metaData, "Issue meta-data fetched successfully", 200);
     }
 
-    async moveIssue(req: Request, res: Response) {
+    async moveToSprint(req: Request, res: Response) {
         const { issueId } = req.params;
-        const { statusId } = req.body;
-        const updatedIssue = await issueService.moveIssue(Number(issueId), statusId);
+        const { sprintId } = req.body;
+        const updatedIssue = await issueService.moveToSprint(Number(issueId), sprintId);
+        return successResponse(res, updatedIssue, "Issue moved successfully", 200);
+    }
+
+    async moveToBacklog(req: Request, res: Response) {
+        const { issueId } = req.params;
+        const updatedIssue = await issueService.moveToBacklog(Number(issueId));
         return successResponse(res, updatedIssue, "Issue moved successfully", 200);
     }
 

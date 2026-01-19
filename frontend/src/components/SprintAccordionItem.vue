@@ -28,12 +28,24 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (e: "toggle"): void;
-  (e: "drop-to-sprint", ev: DragEvent): void;
+  (e: "drop-to-sprint", payload: {issueId: number, sprintId: number}): void;
   (e: "start-sprint"): void;
 }>();
 
 function onDragOver(e: DragEvent) {
   e.preventDefault();
+}
+
+function onDrop(e: DragEvent) {
+  e.preventDefault();
+  const raw = e.dataTransfer?.getData("text/plain");  
+  if (!raw) return;
+  const issueId = Number(raw);
+  
+  emit("drop-to-sprint", {
+    issueId,
+    sprintId: props.sprint.id
+  });
 }
 
 // Map statusId -> category
@@ -102,7 +114,7 @@ const counts = computed(() => {
       v-show="open"
       class="p-4"
       @dragover="onDragOver"
-      @drop="emit('drop-to-sprint', $event)"
+      @drop="onDrop"
     >
       <div class="space-y-2 min-h-15">
         <ScrumIssueCard

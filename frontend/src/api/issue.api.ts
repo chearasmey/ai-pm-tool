@@ -14,8 +14,12 @@ export class IssueService {
         return await api.post(`/issues/${projectKey}`, payload);
     }
 
-    static async moveIssue(issueId: number, statusId: number) {
-        return await api.put(`/issues/${issueId}/move`, { statusId });
+    static async moveToSprint(issueId: number, sprintId: number) {
+        return await api.put(`/issues/${issueId}/to-sprint`, { sprintId });
+    }
+
+    static async moveToBacklog(issueId: number) {
+        return await api.put(`/issues/${issueId}/to-backlog`);
     }
 
     static async getIssueById(issueId: number) {
@@ -29,4 +33,6 @@ export class IssueService {
     static async deleteIssue(issueId: number, cascade: boolean = false) {
         return await api.delete(`/issues/detail/${issueId}?cascade=${cascade}`);
     }
+
+    
 }

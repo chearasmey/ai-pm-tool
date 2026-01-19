@@ -119,19 +119,29 @@ export class IssueRepository {
         );
     }
 
-    static async updateSprint(issueId: number, sprintId: number | null) {
+    static async updateSprint(issueId: number, sprintId: number) {
         const db = await getDB();
         await db.run(
-        `
-        UPDATE issue
+            `
+        UPDATE issues
         SET sprintId = ?, updatedAt = CURRENT_TIMESTAMP
         WHERE id = ?
         `,
-        sprintId,
-        issueId
+            sprintId,
+            issueId
         );
         return this.findById(issueId);
     }
 
-    
+    static async removeFromSprint(issueId: number) {
+        const db = await getDB();
+        await db.run(`
+                UPDATE issues
+                SET sprintId = NULL, updatedAt = CURRENT_TIMESTAMP
+                WHERE id = ?
+            `,
+            issueId
+        );
+        return this.findById(issueId);
+    }
 }

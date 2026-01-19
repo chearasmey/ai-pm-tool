@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { BoardStatusService } from "@/api/board-status.api";
+import { IssueService } from "@/api/issue.api";
 import { SprintService } from "@/api/sprint.api";
 import BacklogAccordion from "@/components/BacklogAccordion.vue";
 import CreateIssueDialog from "@/components/CreateIssueDialog.vue";
@@ -84,7 +85,8 @@ const loadScrumBoards = async (projectkey: string) => {
     sprints.value = response.data.sprints;
     backlogIssues.value = response.data.backlogIssues;
     sprintIssuesMap.value = response.data.sprintIssuesMap;
-    console.log(response.data);
+    openSprintId.value = sprints.value[sprints.value.length -1].id;
+
   }
 };
 
@@ -128,6 +130,22 @@ const onDeltedIssue = async () => {
   if (!project.value) return;
   await loadScrumBoards(project.value.projectKey);
 };
+
+const handleDropToSprint = async (payload: {issueId: number, sprintId: number}) => {
+  if(!payload.sprintId) return;
+  const {status} = await IssueService.moveToSprint(payload.issueId, payload.sprintId);
+  if(status === 200) {
+    await loadScrumBoards(route.params.key as string);
+  }
+}
+
+const handleDropBacklog = async (issueId: number) => {
+  if(!issueId) return;
+  const {status} = await IssueService.moveToBacklog(issueId);
+  if(status === 200) {
+    await loadScrumBoards(route.params.key as string);
+  }
+}
 
 onMounted(async () => {
   await loadScrumBoards(route.params.key as string);
@@ -193,6 +211,7 @@ onMounted(async () => {
         :projectKey="project?.projectKey || ''"
         @toggle="openSprintId = openSprintId === sprint.id ? null : sprint.id"
         @start-sprint=""
+        @drop-to-sprint="handleDropToSprint"
       />
     </div>
 
@@ -201,11 +220,15 @@ onMounted(async () => {
         :project-key="projectKey"
         :issues="backlogIssues"
         @create-sprint="showCreateSprint = true"
-        @drop-to-backlog=""
+        @drop-to-backlog="handleDropBacklog"
         @deleted="onDeltedIssue"
         @updated="onUpdatedIssue"
       />
     </div>
+  </div>
+
+  <div v-else>
+    board status
   </div>
 
   <CreateIssueDialog
