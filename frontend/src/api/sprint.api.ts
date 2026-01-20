@@ -16,4 +16,12 @@ export class SprintService {
     static async stop(sprintId: number) {
         return await api.put(`/sprints/${sprintId}/stop`);
     }
+
+    static async delete(sprintId: number) {
+        return await api.delete(`/sprints/${sprintId}/delete`);   
+    }
+
+    static async update(sprintId: number, payload: any) {
+        return await api.put(`/sprints/${sprintId}/update`, payload);
+    }
 }

@@ -24,6 +24,19 @@ export class SprintController {
         return successResponse(res, sprint, "Sprint stops successfully");
     }
 
+    async delete(req: Request, res: Response) {
+        const sprintId = Number(req.params.sprintId);
+        const sprint = await SprintService.deleteSprint(req.user, sprintId);
+        return successResponse(res, sprint, "Sprint deleted successfully");
+    }
+
+    async update(req: Request, res: Response) {
+        const sprintId = Number(req.params.sprintId);
+        const payload = req.body;
+        const sprint = await SprintService.updateSprint(req.user, sprintId, payload);
+        return successResponse(res, sprint, "Sprint updated successfully");
+    }
+
     async getIssuesFromActiveSprint(req: Request, res: Response) {
         const projectId = Number(req.params.projectId);
         const sprint = await SprintService.getActiveSprintByProjectId(projectId);

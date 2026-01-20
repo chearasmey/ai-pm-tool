@@ -16,28 +16,28 @@ type Sprint = {
 };
 const props = defineProps<{
   open: boolean;
-  activeSprint: Sprint;
+  sprint: Sprint;
 }>();
 const emit = defineEmits<{
   (e: "close"): void;
-  (e: "stopped"): void;
+  (e: "deleted"): void;
 }>();
 
 const errorMsg = ref<string | null>(null);
 const isSubmitting = ref(false);
 
-const onConfirmStop = async () => {
+const onDeleteSprint = async () => {
   isSubmitting.value = true;
-  const { status } = await SprintService.stop(props.activeSprint.id);
+  const { status } = await SprintService.delete(props.sprint.id);
   if (status === 200) {
     isSubmitting.value = false;
-    emit("stopped");
+    emit("deleted");
   }
 };
 
 const onClose = async () => {
-    emit('close');
-}
+  emit("close");
+};
 </script>
 <template>
   <div v-if="open" class="fixed inset-0 z-50">
@@ -47,7 +47,7 @@ const onClose = async () => {
       class="absolute left-1/2 top-1/2 w-115 -translate-x-1/2 -translate-y-1/2 rounded-xl bg-background border shadow p-5"
     >
       <div class="flex items-center justify-between mb-3">
-        <h2 class="text-lg font-semibold">Stop Sprint</h2>
+        <h2 class="text-lg font-semibold">Delete Sprint</h2>
         <button
           class="text-sm text-muted-foreground hover:text-foreground"
           @click="onClose"
@@ -56,24 +56,24 @@ const onClose = async () => {
         </button>
       </div>
 
-      <div v-if="!activeSprint" class="text-sm text-muted-foreground">
+      <div v-if="!sprint" class="text-sm text-muted-foreground">
         No active sprint selected.
       </div>
 
       <div v-else class="space-y-3">
         <div class="rounded-lg border p-3 bg-muted/40">
           <p class="text-sm">
-            You are about to Stop:
-            <span class="font-semibold">{{ activeSprint.name }}</span>
+            You are about to delete:
+            <span class="font-semibold">{{ sprint.name }}</span>
           </p>
           <p class="text-xs text-muted-foreground mt-1">
-            Start: <span class="font-medium">{{ formatDateTime(activeSprint.startDate) }}</span>
+            Start: <span class="font-medium">{{ formatDateTime(sprint.startDate) }}</span>
           </p>
           <p class="text-xs text-muted-foreground mt-1">
-            End: <span class="font-medium">{{ formatDateTime(activeSprint.endDate) }}</span>
+            End: <span class="font-medium">{{ formatDateTime(sprint.endDate) }}</span>
           </p>
           <p class="text-xs text-muted-foreground mt-1">
-            Updated: <span class="font-medium">{{ formatRelativeDate(activeSprint.updatedAt!) }}</span>
+            Updated: <span class="font-medium">{{ formatRelativeDate(sprint.updatedAt!) }}</span>
           </p>
         </div>
 
@@ -95,10 +95,10 @@ const onClose = async () => {
 
         <button
           class="px-3 py-2 rounded bg-red-600 text-white disabled:opacity-50"
-          :disabled="!activeSprint"
-          @click="onConfirmStop"
+          :disabled="!sprint"
+          @click="onDeleteSprint"
         >
-          {{ isSubmitting ? "Stopping..." : "Stop" }}
+          {{ isSubmitting ? "Deleting..." : "Delete" }}
         </button>
       </div>
     </div>

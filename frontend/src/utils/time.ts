@@ -18,3 +18,41 @@ export function formatRelativeDate(date: string) {
 
     return "A year ago";
 }
+
+
+/**
+ * Format ISO date string into human readable format
+ * Example:
+ *  "2026-02-02T03:14:00.000Z"
+ *    -> "02 Feb 2026, 10:14"
+ */
+export function formatDateTime(
+    iso: string | null | undefined,
+    options?: {
+        withTime?: boolean;
+        locale?: string;
+    }
+): string {
+    if (!iso) return "-";
+
+    const { withTime = true, locale = "en-US" } = options || {};
+
+    const date = new Date(iso);
+    if (isNaN(date.getTime())) return "-";
+
+    const datePart = date.toLocaleDateString(locale, {
+        day: "2-digit",
+        month: "short",
+        year: "numeric"
+    });
+
+    if (!withTime) return datePart;
+
+    const timePart = date.toLocaleTimeString(locale, {
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: false
+    });
+
+    return `${datePart}, ${timePart}`;
+}

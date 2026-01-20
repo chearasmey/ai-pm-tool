@@ -1,4 +1,5 @@
 import { getDB } from "../../config/db";
+import { AppError } from "../../errors/app.error";
 
 export type SprintStatus = "PLANNED" | "ACTIVE" | "COMPLETED";
 
@@ -79,6 +80,43 @@ export class SprintRepository {
             id
         );
         return this.findById(id);
+    }
+
+    static async deleteSprint(id: number) {
+        const db = await getDB();
+        await db.exec("BEGIN");
+        let deletedIds: number = id;
+        let deletedCount = 0;
+        try {
+            const childIssues = await db.all(`SELECT id FROM issues WHERE sprintId = ?`, [id]);
+            deletedCount = childIssues.length;
+
+            await db.run(`DELETE FROM sprints WHERE id = ?`, [id]);
+            await db.run(`UPDATE issues SET sprintId = NULL WHERE sprintId = ?`, [id]);
+
+            await db.exec("COMMIT");
+            return { deletedIds, deletedCount };
+        } catch (error: any) {
+            await db.exec("ROLLBACK");
+            throw new AppError("Failed to delete sprint: " + error.message, "DELETE_SPRINT_FAILED", 500);
+        }
+    }
+
+    static async updateSprint(sprintId: number, payload: any) {
+        const db = await getDB();
+        await db.run(`
+            UPDATE sprints
+            SET name = ?, startDate = ?, endDate = ?, goal = ?
+            WHERE id = ?
+            `, [
+                payload.name,
+                payload.startDate,
+                payload.endDate,
+                payload.goal,
+                sprintId
+            ]);
+
+        return this.findById(sprintId);
     }
 
     static async countIssuesInSprint(sprintId: number) {

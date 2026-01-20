@@ -43,6 +43,24 @@ export class SprintService {
         return SprintRepository.stopSprint(sprintId);
     }
 
+    static async deleteSprint(user: any, sprintId: number) {
+        const sprint = await SprintRepository.findById(sprintId);
+        if (!sprint) throw new AppError("Sprint not found", "SPRINT_NOT_FOUND", 404);
+
+        await this.requireSprintAdmin(user, sprint.projectId);
+
+        return SprintRepository.deleteSprint(sprintId);
+    }
+
+    static async updateSprint(user: any, sprintId: number, payload: any) {
+        const sprint = await SprintRepository.findById(sprintId);
+        if (!sprint) throw new AppError("Sprint not found", "SPRINT_NOT_FOUND", 404);
+
+        await this.requireSprintAdmin(user, sprint.projectId);
+
+        return SprintRepository.updateSprint(sprintId, payload);
+    }
+
     static async getActiveSprintByProjectId(projectId: number) {
         const sprint = await SprintRepository.findActiveByProjectId(projectId);
         if (!sprint) throw new AppError("Sprint not found", "SPRINT_NOT_FOUND", 404);

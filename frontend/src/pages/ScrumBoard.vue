@@ -227,6 +227,16 @@ const handleStoppedSprint = async () => {
   isShowStopSprint.value = false;
 };
 
+const onDeletedSprint = async () => {
+  await loadScrumBoards(route.params.key as string);
+  toastStore.show("Delete Sprint Successfully", "success");
+}
+
+const onUpdatedSprint = async () => {
+  await loadScrumBoards(route.params.key as string);
+  toastStore.show("Update Sprint Successfully", "success");
+}
+
 onMounted(async () => {
   await loadScrumBoards(route.params.key as string);
 });
@@ -293,11 +303,12 @@ onMounted(async () => {
               :issues="sprintIssuesMap[sprint.id] || []"
               :statuses="statuses"
               :open="openSprintId === sprint.id"
-              :projectKey="project?.projectKey || ''"
               @toggle="openSprintId = openSprintId === sprint.id ? null : sprint.id"
               @start-sprint="onStartSprint(sprint.id)"
               @drop-to-sprint="handleDropToSprint"
               :is-permission="permission.isAllowed()"
+              @deleted="onDeletedSprint"
+              @updated="onUpdatedSprint"
             />
           </div>
 
@@ -340,7 +351,7 @@ onMounted(async () => {
               @drop-issue="onDropIssue"
               @view="handleViewIssue"
               @is-removed-issue="handleRemoveIssue"
-              :is-permission="permission.isAllowed()"
+              :is-permission="false"
             />
           </div>
         </div>
