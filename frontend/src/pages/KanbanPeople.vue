@@ -30,6 +30,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { toastStore } from "@/components/ui/toast/toast.store";
+import { usePermission } from "@/composable/userPermission";
 import { useAuthStore } from "@/stores/auth.store";
 import type { ProjectMemberInterface, ProjectRoleEnum } from "@/types/project";
 import { UserRoleEnum } from "@/types/role";
@@ -46,6 +47,7 @@ const showInvite = ref(false);
 const memberList = ref<ProjectMemberInterface[]>([]);
 const memberIds = ref<number[]>([]);
 const unselectedUsers = ref([]);
+const permission = usePermission();
 
 const onSearch = async () => {
   await loadMembers(search.value.trim());
@@ -103,6 +105,7 @@ const removeMember = async (id: number) => {
 const onPageLoad = async () => {
   await loadMembers();
   await loadUsers();
+  permission.syncPermission(0, auth.role!);
 };
 
 onMounted(async () => {
@@ -136,7 +139,7 @@ onMounted(async () => {
     </InputGroup>
     <Button
       variant="outline"
-      v-if="hasRole(auth.user?.role!, [UserRoleEnum.SYSTEM_ADMIN, UserRoleEnum.PROJECT_ADMIN])"
+      v-if="permission.isAllowed()"
       @click="openInviteModal"
     >
       Invite
@@ -157,7 +160,7 @@ onMounted(async () => {
         <TableHead>Role</TableHead>
         <TableHead>Joined</TableHead>
         <TableHead
-          v-if="hasRole(auth.user?.role!, [UserRoleEnum.SYSTEM_ADMIN, UserRoleEnum.PROJECT_ADMIN])"
+          v-if="permission.isAllowed()"
           >Action</TableHead
         >
       </TableRow>
@@ -169,7 +172,7 @@ onMounted(async () => {
         <TableCell class="uppercase">{{ member.role }}</TableCell>
         <TableCell>{{ formatRelativeDate(member.joinedAt) }}</TableCell>
         <TableCell
-          v-if="hasRole(auth.user?.role!, [UserRoleEnum.SYSTEM_ADMIN, UserRoleEnum.PROJECT_ADMIN])"
+          v-if="permission.isAllowed()"
         >
           <DropdownMenu>
             <DropdownMenuTrigger

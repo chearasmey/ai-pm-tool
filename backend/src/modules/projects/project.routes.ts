@@ -17,7 +17,6 @@ router.delete("/:projectKey", controller.delete);
 router.post("/:projectKey/members", controller.addMembers);
 router.get("/:projectKey/members", controller.getProjectMembers);
 router.delete("/:projectKey/members/:userId", controller.removeMember);
-router.post("/:projectKey/issues", controller.createIssue);
-router.post("/:projectKey/sprints", controller.createSprint);
+router.get("/:projectId/member-role", controller.getMemberRole)
 
 export default router;

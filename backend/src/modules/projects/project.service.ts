@@ -26,7 +26,7 @@ export class ProjectService {
             createdBy: user.id
         });
 
-        if(project) {
+        if (project) {
             await BoardStatusRepository.seedDefaults(project.id, project.type);
         }
 
@@ -52,31 +52,43 @@ export class ProjectService {
         };
     }
 
+    private async requireProjectOrSystemAdmin(user: any, projectId: number) {
+        // Glob admins
+        if ([UserRole.SYSTEM_ADMIN, UserRole.PROJECT_ADMIN].includes(user.role)) return;
+
+        // Project role must be admin
+        const memberRole = await ProjectRepository.getUserRoleInProject(projectId, user.id);
+        if (memberRole !== "admin") throw new AppError("No permission to get project detail", "NO_PERMISSION", 403);
+    }
+
     async getProjectByKey(projectKey: string, currentUser: { role: UserRole, id: number }) {
         const project = await ProjectRepository.findByKey(projectKey);
         if (!project) throw new AppError("Project not found", "PROJECT_NOT_FOUND", 404);
-        if (currentUser.role !== "system_admin" && project.createdBy !== currentUser.id) throw new AppError("No permission to get project detail", "NO_PERMISSION", 403);
+        await this.requireProjectOrSystemAdmin(currentUser, project.id);
         return project;
     }
 
     async update(projectKey: string, payload: Project, currentUser: { role: UserRole, id: number }) {
         const project = await ProjectRepository.findByKey(projectKey);
         if (!project) throw new AppError("Project not found", "PROJECT_NOT_FOUND", 404);
-        if (currentUser.role !== "system_admin" && project.createdBy !== currentUser.id) throw new AppError("No permission to get project detail", "NO_PERMISSION", 403);
+        await this.requireProjectOrSystemAdmin(currentUser, project.id);
+
         return await ProjectRepository.updateProjectByKey(projectKey, payload);
     }
 
     async delete(projectKey: string, currentUser: { role: UserRole, id: number }) {
         const project = await ProjectRepository.findByKey(projectKey);
         if (!project) throw new AppError("Project not found", "PROJECT_NOT_FOUND", 404);
-        if (currentUser.role !== "system_admin" && project.createdBy !== currentUser.id) throw new AppError("No permission to get project detail", "NO_PERMISSION", 403);
+        await this.requireProjectOrSystemAdmin(currentUser, project.id);
+
         return await ProjectRepository.deleteProjectByKey(projectKey);
     }
 
     async addMembers(projectKey: string, currentUser: { role: UserRole, id: number }, payload: { userIds: number[], role: ProjectRole }) {
         const project = await ProjectRepository.findByKey(projectKey);
         if (!project) throw new AppError("Project not found", "PROJECT_NOT_FOUND", 404);
-        if (currentUser.role !== "system_admin" && project.createdBy !== currentUser.id) throw new AppError("No permission to get project detail", "NO_PERMISSION", 403);
+        await this.requireProjectOrSystemAdmin(currentUser, project.id);
+
         return await ProjectRepository.addMembers(project.id, payload);
     }
 
@@ -89,14 +101,20 @@ export class ProjectService {
     async removeMember(projectKey: string, currentUser: { role: UserRole, id: number }, userId: number) {
         const project = await ProjectRepository.findByKey(projectKey);
         if (!project) throw new AppError("Project not found", "PROJECT_NOT_FOUND", 404);
-        if (currentUser.role !== "system_admin" && project.createdBy !== currentUser.id) throw new AppError("No permission to get project detail", "NO_PERMISSION", 403);
+        await this.requireProjectOrSystemAdmin(currentUser, project.id);
+
         return await ProjectRepository.removeMember(project.id, userId);
     }
 
     async getBoard(projectKey: string, currentUser: { role: UserRole, id: number }) {
         const project = await ProjectRepository.findByKey(projectKey);
         if (!project) throw new AppError("Project not found", "PROJECT_NOT_FOUND", 404);
-        if (currentUser.role !== "system_admin" && project.createdBy !== currentUser.id) throw new AppError("No permission to get project detail", "NO_PERMISSION", 403);
+        await this.requireProjectOrSystemAdmin(currentUser, project.id);
+
         return project.type == ProjectType.SCRUM ? await BoardStatusRepository.getScrumBoardByProjectKey(projectKey) : await BoardStatusRepository.getBoardByProjectKey(project.id);
+    }
+
+    async getMemberRole(projectId: number, currentUser: { role: UserRole, id: number }) {
+        return await ProjectRepository.getMemberRole(projectId, currentUser.id);
     }
 }

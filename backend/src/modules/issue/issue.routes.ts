@@ -12,6 +12,7 @@ router.use(authenticate);
 router.get("/count-by-status/:statusId", issueController.countByStatus);
 router.post("/:projectKey", validate(createIssueSchema), issueController.createIssue);
 router.get("/:projectKey/meta-data", issueController.getIssueMetaData);
+router.put("/:issueId/move", issueController.moveIssue);
 router.put("/:issueId/to-sprint", issueController.moveToSprint);
 router.put("/:issueId/to-backlog", issueController.moveToBacklog);
 router.get("/detail/:id", issueController.getIssueById);

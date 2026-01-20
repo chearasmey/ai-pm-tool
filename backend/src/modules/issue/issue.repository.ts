@@ -119,6 +119,19 @@ export class IssueRepository {
         );
     }
 
+    static async moveIssueTo(issueId: number, toStatusId: number) {
+        const db = await getDB();
+        await db.run(`
+                UPDATE issues
+                SET statusId = ?
+                WHERE id = ?
+            `,
+            toStatusId,
+            issueId
+        );
+        return this.findById(issueId);
+    }
+
     static async updateSprint(issueId: number, sprintId: number) {
         const db = await getDB();
         await db.run(

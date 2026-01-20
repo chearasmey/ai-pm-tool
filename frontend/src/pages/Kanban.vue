@@ -3,8 +3,6 @@ import { onMounted, ref } from "vue";
 import { Button } from "@/components/ui/button";
 import { useAuthStore } from "@/stores/auth.store";
 import { useProjectStore } from "@/stores/project.store";
-import { UserRoleEnum } from "@/types/role";
-import { hasRole } from "@/utils/permission";
 import {
   InputGroup,
   InputGroupAddon,
@@ -42,6 +40,7 @@ import {
 import { ProjectService } from "@/api/project.api";
 import { toastStore } from "@/components/ui/toast/toast.store";
 import { ProjectTypeEnum, type ProjectInterface } from "@/types/project";
+import { usePermission } from "@/composable/userPermission";
 
 const auth = useAuthStore();
 const projectStore = useProjectStore();
@@ -53,6 +52,8 @@ const totalPages = ref(1);
 const limit = APP_CONFIG.PAGINATION_LIMIT;
 const showDialogRef = ref<HTMLElement>();
 const seletedProjectKey = ref("");
+const permission = usePermission();
+
 const fetchProjects = async () => {
   await projectStore.fetchProjects(
     ProjectTypeEnum.KANBAN,
@@ -63,6 +64,7 @@ const fetchProjects = async () => {
   projects.value = projectStore.projects;
   pagination.value = projectStore.pagination;
   totalPages.value = pagination.value.totalPages;
+  permission.syncPermission(0, auth.role!);
 };
 
 const onPageChange = async (p: number) => {
@@ -95,7 +97,7 @@ onMounted(async () => {
   <div class="flex justify-between">
     <h1 class="text-2xl font-semibold mb-4 uppercase">Kanban</h1>
     <Button
-      v-if="hasRole(auth.user?.role!, [UserRoleEnum.SYSTEM_ADMIN, UserRoleEnum.PROJECT_ADMIN])"
+      v-if="permission.isAllowed()"
       as-child
       variant="outline"
     >
@@ -117,7 +119,7 @@ onMounted(async () => {
           <TableHead>Key</TableHead>
           <TableHead>Lead</TableHead>
           <TableHead>Last work update</TableHead>
-          <TableHead v-if="hasRole(auth.user?.role!, [UserRoleEnum.SYSTEM_ADMIN, UserRoleEnum.PROJECT_ADMIN])">Action</TableHead>
+          <TableHead v-if="permission.isAllowed()">Action</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -128,7 +130,7 @@ onMounted(async () => {
           <TableCell>{{ project.projectKey }}</TableCell>
           <TableCell>{{ project.leadUserName ?? "-" }}</TableCell>
           <TableCell>{{ formatRelativeDate(project.updatedAt ?? "-") }}</TableCell>
-          <TableCell v-if="hasRole(auth.user?.role!, [UserRoleEnum.SYSTEM_ADMIN, UserRoleEnum.PROJECT_ADMIN])">
+          <TableCell v-if="permission.isAllowed()">
             <DropdownMenu>
               <DropdownMenuTrigger
                 class="flex flex-col justify-center font-bold hover:bg-gray-200 px-2 pb-2 rounded-sm"
@@ -142,7 +144,7 @@ onMounted(async () => {
                   >
                 </DropdownMenuItem>
                 <DropdownMenuItem
-                  v-if="hasRole(auth.user?.role!, [UserRoleEnum.SYSTEM_ADMIN, UserRoleEnum.PROJECT_ADMIN])"
+                  v-if="permission.isAllowed()"
                   @click="showDeleteDialog(project.projectKey!)"
                   >Delete Now</DropdownMenuItem
                 >

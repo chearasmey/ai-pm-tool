@@ -2,7 +2,6 @@
 import KanbanIssueCard from "@/components/KanbanIssueCard.vue";
 import { useAuthStore } from "@/stores/auth.store";
 import { UserRoleEnum } from "@/types/role";
-import { hasRole } from "@/utils/permission";
 import { EditIcon, TrashIcon } from "lucide-vue-next";
 import RemoveIssueDialog from "./RemoveIssueDialog.vue";
 import { ref } from "vue";
@@ -22,12 +21,17 @@ type Issue = {
   statusId: number;
 };
 
-const props = defineProps<{
-  status: BoardStatus;
-  issues: Issue[];
-}>();
+const props = withDefaults(
+  defineProps<{
+    status: BoardStatus;
+    issues: Issue[];
+    isPermission?: boolean;
+  }>(),
+  {
+    isPermission: true,
+  }
+);
 
-const auth = useAuthStore();
 const issueIdToRemove = ref<number | null>(null);
 
 const emit = defineEmits<{
@@ -105,7 +109,7 @@ function handleDeletedIssue(payload: { deletedCount: number; deletedIds: number[
       </div>
 
       <div
-        v-if="hasRole(auth.user?.role!, [UserRoleEnum.SYSTEM_ADMIN, UserRoleEnum.PROJECT_ADMIN])"
+        v-if="isPermission"
         class="flex gap-1"
       >
         <button
@@ -145,7 +149,7 @@ function handleDeletedIssue(payload: { deletedCount: number; deletedIds: number[
       </div>
     </div>
   </div>
-  
+
   <RemoveIssueDialog
     :issue-id="issueIdToRemove"
     :open="!!issueIdToRemove"

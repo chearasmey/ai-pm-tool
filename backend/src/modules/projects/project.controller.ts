@@ -73,12 +73,11 @@ export class ProjectController {
     return successResponse(res, boards, "Get boards successfully", 200);
   }
 
-  async createIssue(req: Request, res: Response) {
-
-  }
-
-  async createSprint(req: Request, res: Response) {
-
+  async getMemberRole(req: Request, res: Response) {
+    const projectId = Number(req.params.projectId);
+    const user = req.user;
+    const member = await service.getMemberRole(projectId, user);
+    return successResponse(res, member, "Get member role successfully", 200);
   }
 
 }

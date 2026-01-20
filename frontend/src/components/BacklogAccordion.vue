@@ -16,7 +16,12 @@ type Issue = {
   sprintId: number | null;
 };
 
-const props = defineProps<{ issues: Issue[]; projectKey: string }>();
+const props = withDefaults(
+  defineProps<{ issues: Issue[]; projectKey: string; isPermission?: boolean }>(),
+  {
+    isPermission: true,
+  }
+);
 
 const emit = defineEmits<{
   (e: "create-sprint"): void;
@@ -34,7 +39,7 @@ function onDragOver(e: DragEvent) {
 }
 
 function onDrop(e: DragEvent) {
-  const raw = e.dataTransfer?.getData("text/plain");  
+  const raw = e.dataTransfer?.getData("text/plain");
   if (!raw) return;
   const issueId = Number(raw);
   emit("drop-to-backlog", issueId);
@@ -74,7 +79,7 @@ function handleDeletedIssue(payload: { deletedCount: number; deletedIds: number[
         <span class="text-xs px-2 py-0.5 rounded bg-muted">{{ issues.length }}</span>
       </div>
 
-      <Button variant="outline" @click="emit('create-sprint')"> Add sprint </Button>
+      <Button v-if="isPermission" variant="outline" @click="emit('create-sprint')"> Add sprint </Button>
     </div>
 
     <!-- Drop zone -->

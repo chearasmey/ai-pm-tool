@@ -63,6 +63,14 @@ export class IssueService {
             defaultStatusId
         };
     }
+    async moveIssue(issueId: number, statusId: number) {
+        const issue = await IssueRepository.findById(issueId);
+        if (!issue) throw new AppError("Issue not found", "ISSUE_NOT_FOUND", 404);
+        const isStatusInProject = await ProjectRepository.isStatusInProject(issue.projectId, issue.statusId);
+        if (!isStatusInProject) throw new AppError("Status not found in project", "STATUS_NOT_IN_PROJECT", 404);
+
+        return await IssueRepository.moveIssueTo(issueId, statusId);
+    }
 
     async moveToSprint(issueId: number, sprintId: number): Promise<Issue> {
         const issue = await IssueRepository.findById(issueId);

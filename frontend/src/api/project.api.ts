@@ -35,4 +35,8 @@ export class ProjectService {
     return await api.delete(`/projects/${projectKey}/members/${userId}`);
   }
 
+  static async getMemberRole(projectId: number) {
+    return await api.get(`/projects/${projectId}/member-role`);
+  }
+
 }

@@ -90,7 +90,11 @@ export class ProjectRepository {
         }
 
         else if (role === "project_admin") {
-            whereClause += ` AND p.createdBy = :userId`;
+             joinClause = `
+                LEFT JOIN project_member pm
+                ON pm.projectId = p.id
+            `;
+            whereClause += ` AND (pm.userId = :userId OR p.createdBy = :userId)`;
 
             if (searchClause) {
                 const searchParam = `%${search}%`;
@@ -314,5 +318,19 @@ export class ProjectRepository {
        ORDER BY position ASC, id ASC`,
             projectId
         );
+    }
+
+    static async getMemberRole(projectId: number, userId: number) {
+        const db = await getDB();
+        const result = await db.get(`
+                SELECT *
+                FROM project_member
+                WHERE projectId = ? AND userId = ? LIMIT 1
+            `,
+            projectId,
+            userId
+        );
+
+        return result;
     }
 }

@@ -1,6 +1,6 @@
 import { defineStore } from "pinia";
 import api from "@/api/axios";
-import type { ProjectTypeEnum } from "@/types/projectTypeEnum";
+import type { ProjectTypeEnum } from "@/types/project";
 
 export const useProjectStore = defineStore("project", {
     state: () => ({

@@ -15,7 +15,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useAuthStore } from "@/stores/auth.store";
 import { UserRoleEnum } from "@/types/role";
-import { hasRole } from "@/utils/permission";
 import { UserIcon } from "lucide-vue-next";
 import { computed, onMounted, ref } from "vue";
 import { useRoute } from "vue-router";
@@ -29,6 +28,7 @@ import CreateIssueDialog from "@/components/CreateIssueDialog.vue";
 import { IssueService } from "@/api/issue.api";
 import IssueViewDialog from "@/components/IssueViewDialog.vue";
 import { toastStore } from "@/components/ui/toast/toast.store";
+import { usePermission } from "@/composable/userPermission";
 const auth = useAuthStore();
 const route = useRoute();
 
@@ -64,6 +64,7 @@ const projectKey = computed(() => route.params.key as string);
 const showCreate = ref(false);
 const showIssueView = ref(false);
 const issueIdView = ref<number>(0);
+const permission = usePermission();
 
 // DONE columns must be at end
 const orderedStatuses = computed(() => {
@@ -94,6 +95,7 @@ const loadKanbanBoard = async (projectkey: string) => {
     if (status === 200) {
       statuses.value = response.data.columns;
       project.value = response.data.project;
+      permission.syncPermission(project.value?.id as number, auth.role!);
     }
   } catch (error) {
     console.error("Failed to fetch kanban boards:", error);
@@ -185,7 +187,6 @@ const onUpdatedIssue = async (message: string) => {
 const handleRemoveIssue = async () => {
   await loadKanbanBoard(projectKey.value);
 };
-
 </script>
 <template>
   <div class="mb-3">
@@ -212,7 +213,7 @@ const handleRemoveIssue = async () => {
       </div>
 
       <DropdownMenu
-        v-if="hasRole(auth.user?.role!, [UserRoleEnum.SYSTEM_ADMIN, UserRoleEnum.PROJECT_ADMIN])"
+        v-if="permission.isAllowed()"
       >
         <DropdownMenuTrigger
           class="flex flex-col justify-center font-bold hover:bg-gray-200 px-2 pb-2 rounded-sm"
@@ -239,7 +240,7 @@ const handleRemoveIssue = async () => {
 
       <Button
         variant="outline"
-        v-if="hasRole(auth.user?.role!, [UserRoleEnum.SYSTEM_ADMIN, UserRoleEnum.PROJECT_ADMIN])"
+        v-if="permission.isAllowed()"
         class="px-3 py-2 rounded border hover:bg-muted"
         @click="showAdd = true"
       >

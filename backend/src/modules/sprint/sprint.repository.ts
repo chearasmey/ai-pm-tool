@@ -65,4 +65,48 @@ export class SprintRepository {
         );
         return this.findById(id);
     }
+
+    static async stopSprint(id: number) {
+        const db = await getDB();
+        await db.run(
+            `
+      UPDATE sprints
+      SET status = 'COMPLETED',
+          startDate = COALESCE(startDate, CURRENT_TIMESTAMP),
+          updatedAt = CURRENT_TIMESTAMP
+      WHERE id = ?
+      `,
+            id
+        );
+        return this.findById(id);
+    }
+
+    static async countIssuesInSprint(sprintId: number) {
+        const db = await getDB();
+
+        const row = await db.get(`
+                SELECT COUNT(*) AS cnt FROM issues 
+                WHERE sprintId = ?
+            `, sprintId);
+
+        return Number(row?.cnt ?? 0);
+    }
+
+    static async findActiveByProjectId(projectId: number) {
+        const db = await getDB();
+        const activedSprint = await db.get(`
+                SELECT * FROM sprints WHERE projectId = ? AND status='ACTIVE' LIMIT 1
+            `, projectId);
+        if (!activedSprint) return { sprint: {}, issues: [] }
+
+        const issues = await db.all(`
+                SELECT *
+                FROM issues
+                WHERE sprintId = ?
+            `,
+            activedSprint.id
+        );
+
+        return { sprint: activedSprint, issues };
+    }
 }

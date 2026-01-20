@@ -14,6 +14,10 @@ export class IssueService {
         return await api.post(`/issues/${projectKey}`, payload);
     }
 
+    static async moveIssue(issueId: number, statusId: number) {
+        return await api.put(`/issues/${issueId}/move`, {statusId});
+    }
+
     static async moveToSprint(issueId: number, sprintId: number) {
         return await api.put(`/issues/${issueId}/to-sprint`, { sprintId });
     }

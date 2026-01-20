@@ -19,12 +19,15 @@ type Issue = {
   sprintId: number | null;
 };
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   sprint: Sprint;
   issues: Issue[];
   statuses: Status[];
   open: boolean;
-}>();
+  isPermission?: boolean;
+}>(), {
+  isPermission: true
+});
 
 const emit = defineEmits<{
   (e: "toggle"): void;
@@ -73,7 +76,7 @@ const counts = computed(() => {
 </script>
 
 <template>
-  <div class="rounded-xl border bg-background overflow-hidden">
+  <div class="rounded-xl border bg-background overflow-hidden" :class="{'border-2 border-green-600': sprint.status === 'ACTIVE'}">
     <!-- Header -->
     <button
       class="w-full px-4 py-3 flex items-center justify-between border-b hover:bg-muted/40"
@@ -99,8 +102,7 @@ const counts = computed(() => {
       <div class="flex items-center gap-2">
         <span class="text-xs px-2 py-0.5 rounded border">{{ sprint.status }}</span>
         <Button
-          v-if="sprint.status === 'PLANNED'"
-          class=""
+          v-if="sprint.status === 'PLANNED' && isPermission"
           variant="outline"
           @click.stop="emit('start-sprint')"
         >

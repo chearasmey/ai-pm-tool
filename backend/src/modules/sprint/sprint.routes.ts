@@ -9,5 +9,8 @@ const controller = new SprintController();
 router.use(authenticate);
 
 router.post("/project/:projectId", controller.create);
+router.put("/:sprintId/start", controller.start);
+router.put("/:sprintId/stop", controller.stop);
+router.get("/project/:projectId/active", controller.getIssuesFromActiveSprint);
 
 export default router;
