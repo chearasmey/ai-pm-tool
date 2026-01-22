@@ -333,4 +333,17 @@ export class ProjectRepository {
 
         return result;
     }
+
+    static async getProjectStarsByUser(userId: number) {
+        const db = await getDB();
+        const result = await db.all(`
+                SELECT projectId
+                FROM project_favorite
+                WHERE userId = ?
+            `,
+            userId
+        );
+
+        return result.map(el => el.projectId)??[];
+    }
 }

@@ -8,7 +8,7 @@ import {
   InputGroupAddon,
   InputGroupInput,
 } from "@/components/ui/input-group";
-import { SearchIcon } from "lucide-vue-next";
+import { SearchIcon, StarIcon } from "lucide-vue-next";
 import {
   Table,
   TableBody,
@@ -41,6 +41,7 @@ import { ProjectService } from "@/api/project.api";
 import { toastStore } from "@/components/ui/toast/toast.store";
 import { ProjectTypeEnum, type ProjectInterface } from "@/types/project";
 import { usePermission } from "@/composable/userPermission";
+import { ProjectFavoriteService } from "@/api/project-favorite.api";
 
 const auth = useAuthStore();
 const projectStore = useProjectStore();
@@ -53,6 +54,8 @@ const limit = APP_CONFIG.PAGINATION_LIMIT;
 const showDialogRef = ref<HTMLElement>();
 const seletedProjectKey = ref("");
 const permission = usePermission();
+const favoriteProjectIds = ref([]);
+
 
 const fetchProjects = async () => {
   await projectStore.fetchProjects(
@@ -65,6 +68,10 @@ const fetchProjects = async () => {
   pagination.value = projectStore.pagination;
   totalPages.value = pagination.value.totalPages;
   permission.syncPermission(0, auth.role!);
+  const {data: response, status} = await ProjectService.getFavoriteProjectIds();
+  if(status===200) {
+    favoriteProjectIds.value = response.data;
+  }
 };
 
 const onPageChange = async (p: number) => {
@@ -89,6 +96,21 @@ const deleteProject = async () => {
     await fetchProjects();
   }
 };
+
+const onStar = async (projectKey: string) => {
+  const { status }  = await ProjectFavoriteService.star(projectKey);
+  if(status === 201) {
+    await fetchProjects();
+  }
+}
+
+const onUnStar = async (projectKey: string) => {
+  const {status} = await ProjectFavoriteService.unStar(projectKey);
+  if(status === 200) {
+    await fetchProjects();
+  }
+}
+
 onMounted(async () => {
   await fetchProjects();
 });
@@ -96,11 +118,7 @@ onMounted(async () => {
 <template>
   <div class="flex justify-between">
     <h1 class="text-2xl font-semibold mb-4 uppercase">Kanban</h1>
-    <Button
-      v-if="permission.isAllowed()"
-      as-child
-      variant="outline"
-    >
+    <Button v-if="permission.isAllowed()" as-child variant="outline">
       <router-link to="/kanban/create">Create</router-link>
     </Button>
   </div>
@@ -115,6 +133,9 @@ onMounted(async () => {
     <Table>
       <TableHeader>
         <TableRow>
+          <TableHead>
+            <StarIcon />
+          </TableHead>
           <TableHead>Name</TableHead>
           <TableHead>Key</TableHead>
           <TableHead>Lead</TableHead>
@@ -125,7 +146,24 @@ onMounted(async () => {
       <TableBody>
         <TableRow v-for="project in projects">
           <TableCell>
-            <router-link :to="`/kanban/board/${project.projectKey}`" class="hover:underline">{{ project.name }}</router-link>
+            <StarIcon
+              v-if="favoriteProjectIds.some((el) => el === project.id)"
+              fill="oklch(79.5% 0.184 86.047)"
+              class="text-yellow-500 hover:cursor-pointer"
+              @click="onUnStar(project.projectKey)"
+            />
+            <StarIcon
+              v-else
+              class="hover:cursor-pointer"
+              @click="onStar(project.projectKey)"
+            />
+          </TableCell>
+          <TableCell>
+            <router-link
+              :to="`/kanban/board/${project.projectKey}`"
+              class="hover:underline"
+              >{{ project.name }}</router-link
+            >
           </TableCell>
           <TableCell>{{ project.projectKey }}</TableCell>
           <TableCell>{{ project.leadUserName ?? "-" }}</TableCell>

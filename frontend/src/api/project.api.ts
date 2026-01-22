@@ -39,4 +39,8 @@ export class ProjectService {
     return await api.get(`/projects/${projectId}/member-role`);
   }
 
+  static async getFavoriteProjectIds() {
+    return await api.get(`/projects/stars`);
+  }
+
 }

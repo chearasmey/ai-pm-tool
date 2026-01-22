@@ -79,5 +79,11 @@ export class ProjectController {
     const member = await service.getMemberRole(projectId, user);
     return successResponse(res, member, "Get member role successfully", 200);
   }
+  
+  async getProjectStarsByUser(req: Request, res: Response) {
+    const user = req.user;
+    const projectIds = await service.getProjectStarsByUser(user);
+    return successResponse(res, projectIds, "Get stars project ids successfully", 200);
+  }
 
 }

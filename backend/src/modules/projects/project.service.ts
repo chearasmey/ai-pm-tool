@@ -117,4 +117,8 @@ export class ProjectService {
     async getMemberRole(projectId: number, currentUser: { role: UserRole, id: number }) {
         return await ProjectRepository.getMemberRole(projectId, currentUser.id);
     }
+
+    async getProjectStarsByUser(currentUser: { role: UserRole, id: number }) {
+        return await ProjectRepository.getProjectStarsByUser(currentUser.id);
+    }
 }

@@ -101,7 +101,7 @@ export const getDB = async (): Promise<Database> => {
 
     CREATE INDEX IF NOT EXISTS idx_board_status_project ON board_status(projectId);
   `);
-  
+
   await dbInstance.exec(`
     CREATE TABLE IF NOT EXISTS issues (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -131,6 +131,19 @@ export const getDB = async (): Promise<Database> => {
     CREATE INDEX IF NOT EXISTS idx_issue_status ON issues(statusId);
     CREATE INDEX IF NOT EXISTS idx_issue_sprint ON issues(sprintId);
 
+  `);
+
+  await dbInstance.exec(`
+    CREATE TABLE IF NOT EXISTS project_favorite (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      projectId INTEGER NOT NULL,
+      userId INTEGER NOT NULL,
+      createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(projectId, userId)
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_project_favorite_user ON project_favorite(userId);
+    CREATE INDEX IF NOT EXISTS idx_project_favorite_project ON project_favorite(projectId);
   `);
 
   console.log("📦 SQLite DB Initialized");

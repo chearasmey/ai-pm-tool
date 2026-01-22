@@ -9,7 +9,7 @@ import {
   InputGroupAddon,
   InputGroupInput,
 } from "@/components/ui/input-group";
-import { SearchIcon } from "lucide-vue-next";
+import { SearchIcon, StarIcon } from "lucide-vue-next";
 import {
   Table,
   TableBody,
@@ -42,6 +42,7 @@ import {
 import { ProjectService } from "@/api/project.api";
 import { toastStore } from "@/components/ui/toast/toast.store";
 import { usePermission } from "@/composable/userPermission";
+import { ProjectFavoriteService } from "@/api/project-favorite.api";
 
 const auth = useAuthStore();
 const projectStore = useProjectStore();
@@ -54,6 +55,7 @@ const limit = APP_CONFIG.PAGINATION_LIMIT;
 const showDialogRef = ref<HTMLElement>();
 const seletedProjectKey = ref("");
 const permission = usePermission();
+const favoriteProjectIds = ref([]);
 
 const fetchProjects = async () => {
   await projectStore.fetchProjects(
@@ -67,7 +69,11 @@ const fetchProjects = async () => {
   totalPages.value = pagination.value.totalPages;
   permission.syncPermission(0, auth.role!);
 
-  console.log(permission.isAllowed());
+  const {data: response, status} = await ProjectService.getFavoriteProjectIds();
+  if(status===200) {
+    favoriteProjectIds.value = response.data;
+  }
+
   
 };
 
@@ -93,6 +99,20 @@ const deleteProject = async () => {
     await fetchProjects();
   }
 };
+
+const onStar = async (projectKey: string) => {
+  const { status }  = await ProjectFavoriteService.star(projectKey);
+  if(status === 201) {
+    await fetchProjects();
+  }
+}
+
+const onUnStar = async (projectKey: string) => {
+  const {status} = await ProjectFavoriteService.unStar(projectKey);
+  if(status === 200) {
+    await fetchProjects();
+  }
+}
 onMounted(async () => {
   await fetchProjects();
 });
@@ -119,6 +139,9 @@ onMounted(async () => {
     <Table>
       <TableHeader>
         <TableRow>
+          <TableHead>
+            <StarIcon />
+          </TableHead>
           <TableHead>Name</TableHead>
           <TableHead>Key</TableHead>
           <TableHead>Lead</TableHead>
@@ -128,6 +151,10 @@ onMounted(async () => {
       </TableHeader>
       <TableBody>
         <TableRow v-for="project in projects">
+          <TableCell>
+            <StarIcon v-if="favoriteProjectIds.some(el=>el === project.id)" fill="oklch(79.5% 0.184 86.047)" class="text-yellow-500 hover:cursor-pointer" @click="onUnStar(project.projectKey)" />
+            <StarIcon v-else class="hover:cursor-pointer" @click="onStar(project.projectKey)" />
+          </TableCell>
           <TableCell>
             <router-link :to="`/scrum/board/${project.projectKey}`" class="hover:underline">{{ project.name }}</router-link>
           </TableCell>

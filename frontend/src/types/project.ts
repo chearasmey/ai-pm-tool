@@ -27,3 +27,7 @@ export enum ProjectTypeEnum {
     SCRUM = 'scrum',
     KANBAN = 'kanban'
 }
+
+export type StarredProject = ProjectInterface & {
+    starredAt: string;
+} 

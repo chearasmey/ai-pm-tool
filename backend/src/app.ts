@@ -11,6 +11,7 @@ import cors from "cors";
 import boardStatusRoutes from "./modules/board-status/board-status.routes";
 import issueRoutes from "./modules/issue/issue.routes";
 import sprintRoutes from "./modules/sprint/sprint.routes";
+import projectFavoriteRoutes from "./modules/project-favorite/project-favorite.routes";
 
 
 const app = express();
@@ -62,6 +63,7 @@ app.use("/api/projects", projectRoutes);
 app.use("/api/boards", boardStatusRoutes);
 app.use("/api/issues", issueRoutes);
 app.use("/api/sprints", sprintRoutes)
+app.use("/api/project-favorites", projectFavoriteRoutes);
 
 app.use(errorMiddleware);
 
