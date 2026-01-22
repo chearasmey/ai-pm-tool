@@ -12,6 +12,7 @@ import boardStatusRoutes from "./modules/board-status/board-status.routes";
 import issueRoutes from "./modules/issue/issue.routes";
 import sprintRoutes from "./modules/sprint/sprint.routes";
 import projectFavoriteRoutes from "./modules/project-favorite/project-favorite.routes";
+import forYouRoutes from "./modules/for-you/for-you.routes";
 
 
 const app = express();
@@ -64,6 +65,7 @@ app.use("/api/boards", boardStatusRoutes);
 app.use("/api/issues", issueRoutes);
 app.use("/api/sprints", sprintRoutes)
 app.use("/api/project-favorites", projectFavoriteRoutes);
+app.use("/api/for-you", forYouRoutes);
 
 app.use(errorMiddleware);
 

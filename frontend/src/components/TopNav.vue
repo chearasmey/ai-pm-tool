@@ -20,10 +20,6 @@ const logout = async () => {
 
     <div class="hidden md:flex justify-between gap-2 w-1/2 bg-amber-50">
       <Input placeholder="Search" />
-      <Button>
-        <plus />
-        Create
-      </Button>
     </div>
 
     <div class="flex items-center gap-1">
