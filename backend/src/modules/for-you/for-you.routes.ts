@@ -6,6 +6,7 @@ const router = Router();
 const controller = new ForYouController();
 
 router.use(authenticate);
-router.get("/", controller.get);
+router.get("/data", controller.get);
+router.get("/ai-stream", controller.aiStream);
 
 export default router;

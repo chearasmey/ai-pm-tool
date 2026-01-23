@@ -2,53 +2,58 @@ import { ollamaChat } from "../../integrations/ollama";
 import { runForYouTool } from "../../mcp/tools/for-you.tools";
 
 export class ForYouService {
-    async getForYou(user: any) {
-        // 1) MCP tool calls (structured context)
+    async getForYouData(user: any) {
         const [recentTasks, recentProjects] = await Promise.all([
-            runForYouTool("get_recent_tasks", { limit: 10 }, user),
-            runForYouTool("get_recent_projects", { limit: 5 }, user)
+            runForYouTool("get_recent_tasks", { limit: 8 }, user),
+            runForYouTool("get_recent_projects", { limit: 6 }, user)
         ]);
-
-        // 2) Build context for LLM (keep it short & structured)
-        const context = {
-            user: { id: user.id, name: user.name, role: user.role },
-            recentTasks,
-            recentProjects
-        };
-
-        // 3) LLM summary (small, actionable)
-        const system = `
-You are an assistant for a Jira-like project management tool.
-Return a short "For You" summary with 3 sections:
-1) Highlights (2-3 bullets)
-2) Suggested Next Actions (3 bullets)
-3) Risks/Reminders (1-2 bullets)
-Be concise, practical, and based ONLY on the provided context.
-`;
-
-        const userMsg = `Context (JSON):\n${JSON.stringify(context, null, 2)}`;
-
-        let aiText = "";
-        try {
-            aiText = await ollamaChat({
-                model: process.env.OLLAMA_MODEL || "llama3",
-                messages: [
-                    { role: "system", content: system.trim() },
-                    { role: "user", content: userMsg }
-                ]
-            });
-        } catch (e) {
-            // If ollama down, still return data
-            aiText = "";
-        }
 
         return {
             recentTasks: recentTasks.items,
-            recentProjects: recentProjects.items,
-            ai: {
-                enabled: !!aiText,
-                text: aiText
-            }
+            recentProjects: recentProjects.items
+        };
+    }
+
+    buildAiPrompt(user: any, data: any) {
+        const system = `
+        You are an assistant for a Jira-like project management tool.
+
+        CRITICAL RULES (must follow):
+        - Use ONLY the JSON context provided. Do NOT assume any missing data.
+        - Do NOT invent dates, times, statuses, users, or counts.
+        - All datetime/timestamp fields are already human-readable in the context. Use them exactly as provided.
+        - dueDate represents the deadline. If dueDate is missing, do not mention a deadline.
+        - Use task status from recentTasks.statusName and recentTasks.statusCategory only.
+        - If there are zero tasks or projects, explicitly say so.
+        - Output MUST be valid Markdown and MUST follow the exact template below.
+
+        OUTPUT TEMPLATE (must follow exactly):
+
+        ## Highlights
+        - ...
+
+        ## Suggested next actions
+        - ...
+
+        ## Deadlines
+        - ...
+
+        ## Risk
+        - ...
+        `.trim();
+
+        const userMsg = `Context (JSON):\n${JSON.stringify(
+            {
+                user: { id: user.id, name: user.name, role: user.role },
+                ...data
+            },
+            null,
+            2
+        )}`;
+
+        return {
+            system,
+            userMsg
         };
     }
 }

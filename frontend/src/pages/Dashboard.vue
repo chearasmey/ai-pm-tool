@@ -2,44 +2,84 @@
 import ProjectCard from "../components/ProjectCard.vue";
 import IssueList from "../components/IssueList.vue";
 import { type ProjectInterface } from "../types/project";
-import { onMounted, ref } from "vue";
+import { onBeforeUnmount, onMounted, ref } from "vue";
 import { type IssueType } from "@/types/issue";
 import { ForYouService } from "@/api/for-you.api";
 import { formatRelativeDate } from "@/utils/time";
+import MarkdownViewer from "@/components/MarkdownViewer.vue";
+import { streamSseWithBearer } from "@/api/ai-stream.service";
+import { useAuthStore } from "@/stores/auth.store";
 
-const loading = ref(false);
-const error = ref<string | null>(null);
+const auth = useAuthStore();
 
-const aiEnabled = ref(false);
+const isLoadingData = ref(false);
+const errorData = ref<string | null>(null);
+
+// AI stream state
 const aiText = ref("");
+const aiStreaming = ref(false);
+const aiError = ref<string | null>(null);
+let streamStopper: {stop: () => void } | null = null;
 
 const issues = ref<IssueType[]>([]);
 const projects = ref<ProjectInterface[]>([]);
 
-const load = async () => {
-  loading.value = true;
-  error.value = null;
+const startAiStream = async () => {
+  // stop previous
+  streamStopper?.stop();
+  streamStopper = null;
+
+  // reset
+  aiText.value = "";
+  aiError.value = null;
+  aiStreaming.value = true;
+
+  // If accessToken may expire, refresh first (optional best practice)
+  // await auth.ensureFreshAccessToken();
+
+  streamStopper = await streamSseWithBearer("/api/for-you/ai-stream", auth.$state.accessToken!, {
+    onDelta: (delta) => {
+      aiText.value += delta; // token-by-token / word-by-word effect
+    },
+    onDone: () => {
+      aiStreaming.value = false;
+    },
+    onError: (msg) => {
+      aiStreaming.value = false;
+      aiError.value = msg;
+    }
+  });
+
+}
+
+const loadData = async () => {
+  isLoadingData.value = true;
+  errorData.value = null;
   try {
     const { data: response, status} = await ForYouService.get();
     if(status === 200){
-      console.log(response);
       const result = response.data;
       issues.value = result.recentTasks ?? [];
       projects.value = result.recentProjects ?? [];
-      aiEnabled.value = !!result.ai?.enabled;
-      aiText.value = result.ai?.text || "";
-
     }
   } catch (e: any) {
-    error.value = e?.message ?? "Load failed";
+    errorData.value = e?.message ?? "Load failed";
   } finally {
-    loading.value = false;
+    isLoadingData.value = false;
   }
 }
 
 onMounted(async ()=>{
-  await load();
+   // 1) show projects/tasks immediately
+  await loadData();
+
+  // 2) start AI streaming (user can see data already)
+  startAiStream();
 })
+
+onBeforeUnmount(() => {
+  streamStopper?.stop();
+});
 </script>
 <template>
   <div>
@@ -52,27 +92,35 @@ onMounted(async ()=>{
         </p>
       </div>
 
-      <div v-if="loading" class="text-sm text-muted-foreground">Loading...</div>
-      <div v-else-if="error" class="text-sm text-destructive">{{ error }}</div>
+      <div v-if="isLoadingData" class="text-sm text-muted-foreground">Loading...</div>
+      <div v-else-if="errorData" class="text-sm text-destructive">{{ errorData }}</div>
       <div v-else class="grid grid-cols-12 gap-4">
         <!-- AI Summary -->
         <div class="col-span-12 lg:col-span-7 rounded-xl border bg-background p-4">
           <div class="flex items-center justify-between mb-2">
             <h2 class="font-semibold">AI Summary</h2>
             <span class="text-xs px-2 py-0.5 rounded border">
-              {{ aiEnabled ? "Ollama On" : "Ollama Off" }}
+              {{ aiStreaming ? "Thinking..." : "Ready" }}
             </span>
+            <button
+              class="text-xs px-2 py-1 rounded border hover:bg-muted"
+              @click="startAiStream"
+            >
+              Regenerate
+            </button>
           </div>
 
           <div
-            v-if="aiEnabled && aiText"
-            class="text-sm whitespace-pre-wrap leading-relaxed"
+            v-if="aiError"
+            class="text-sm text-destructive border rounded p-3 bg-destructive/5 border-destructive/20"
           >
-            {{ aiText }}
+            {{ aiError }}
           </div>
 
           <div v-else class="text-sm text-muted-foreground">
-            AI summary unavailable. (Check Ollama is running)
+            <markdown-viewer :content="aiText || 'Generating suggestions...'" />
+            <!-- typing cursor -->
+            <span v-if="aiStreaming" class="inline-block w-2 animate-pulse">▍</span>
           </div>
         </div>
         <!-- End AI Summary -->

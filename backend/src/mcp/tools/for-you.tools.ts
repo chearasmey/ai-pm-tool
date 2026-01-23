@@ -1,4 +1,5 @@
 import { getDB } from "../../config/db";
+import { computeDeadline, formatHuman } from "../../utils/date-format";
 
 export type ForYouToolName = "get_recent_tasks" | "get_recent_projects";
 
@@ -21,34 +22,74 @@ async function getRecentTasks(args: { limit?: number }, user: any) {
     // - assigned to user OR created by user
     const rows = await db.all(
         `
-    SELECT
-      i.id,
-      i.title,
-      i.priority,
-      i.type,
-      i.projectId,
-      p.projectKey,
-      p.name AS projectName,
-      i.statusId,
-      i.assigneeId,
-      u.name AS assigneeName,
-      i.startDate,
-      i.dueDate,
-      i.updatedAt,
-      i.createdAt
-    FROM issues i
-    JOIN projects p ON p.id = i.projectId
-    LEFT JOIN users u ON u.id = i.assigneeId
-    WHERE (i.assigneeId = ? OR i.createdBy = ?)
-    ORDER BY COALESCE(i.updatedAt, i.createdAt) DESC
-    LIMIT ?
-    `,
+            SELECT
+                i.id,
+                i.title,
+                i.priority,
+                i.type,
+                i.projectId,
+                p.projectKey,
+                p.name AS projectName,
+
+                i.statusId,
+                bs.name AS statusName,
+                bs.category AS statusCategory,
+
+                i.assigneeId,
+                u.name AS assigneeName,
+
+                i.dueDate,
+                i.updatedAt,
+                i.createdAt
+            FROM issues i
+            JOIN projects p ON p.id = i.projectId
+            LEFT JOIN users u ON u.id = i.assigneeId
+            LEFT JOIN board_status bs ON bs.id = i.statusId
+            WHERE (i.assigneeId = ? OR i.createdBy = ?)
+            ORDER BY COALESCE(i.updatedAt, i.createdAt) DESC
+            LIMIT ?
+            `,
         user.id,
         user.id,
         limit
     );
 
-    return { items: rows };
+    const items = rows.map((r: any) => {
+        const deadline = computeDeadline(r.dueDate);
+
+        return {
+            id: r.id,
+            title: r.title,
+            type: r.type,
+            priority: r.priority,
+
+            projectId: r.projectId,
+            projectKey: r.projectKey,
+            projectName: r.projectName,
+
+            statusId: r.statusId ?? null,
+            statusName: r.statusName ?? "Unknown",
+            statusCategory: r.statusCategory ?? "TODO", // fallback if null
+
+            assigneeId: r.assigneeId ?? null,
+            assigneeName: r.assigneeName ?? null,
+
+            // raw timestamps (keep if you want)
+            createdAt: r.createdAt ?? null,
+            updatedAt: r.updatedAt ?? null,
+            dueDate: r.dueDate ?? null,
+
+            // human readable (for UI + LLM)
+            createdAtHuman: formatHuman(r.createdAt),
+            updatedAtHuman: formatHuman(r.updatedAt ?? r.createdAt),
+
+            dueDateHuman: deadline.dueDateHuman,
+            deadlineState: deadline.deadlineState,
+            deadlineDays: deadline.deadlineDays
+        };
+    });
+
+    return { items };
 }
 
 async function getRecentProjects(args: { limit?: number }, user: any) {
@@ -66,6 +107,7 @@ async function getRecentProjects(args: { limit?: number }, user: any) {
         p.projectKey,
         p.name,
         p.type,
+        p.description AS goal,
         p.updatedAt,
         p.createdAt,
         u.name AS leadUserName
@@ -86,6 +128,7 @@ async function getRecentProjects(args: { limit?: number }, user: any) {
       p.projectKey,
       p.name,
       p.type,
+      p.description AS goal,
       p.updatedAt,
       p.createdAt,
       u.name AS leadUserName
@@ -100,5 +143,11 @@ async function getRecentProjects(args: { limit?: number }, user: any) {
         limit
     );
 
-    return { items: rows };
+    const items = rows.map((p: any) => ({
+        ...p,
+        createdAtHuman: formatHuman(p.createdAt),
+        updatedAtHuman: formatHuman(p.updatedAt ?? p.createdAt)
+    }));
+
+    return { items };
 }

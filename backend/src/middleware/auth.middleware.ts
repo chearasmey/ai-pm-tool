@@ -5,10 +5,25 @@ import { UserService } from "../modules/users/user.service";
 
 
 export const authenticate = async (req: Request, res: Response, next: NextFunction) => {
+    let token: string | null = null;
     const header = req.headers.authorization;
-    if (!header?.startsWith("Bearer ")) return res.status(401).json({ error: "No token" });
+    // if (!header?.startsWith("Bearer ")) return res.status(401).json({ error: "No token" });
+    // 1) Try Authorization header
+    if (header?.startsWith("Bearer ")) {
+        token = header.slice(7);
+    }
+
+    // 1) Try Authorization header
+    // console.log(req.headers.cookie);
+    if (!token && req.headers.cookie) {
+
+        token = req.headers.cookie?.split("refreshToken=")[1]?.split(";")[0];
+    }
+
+    if (!token) return res.status(401).json({ error: "No token" });
+
     try {
-        const payload: any = verifyToken(header.split(" ")[1]);
+        const payload: any = verifyToken(token);
         const user = await UserService.me(payload.id);
         if (payload.tokenVersion === user?.tokenVersion) {
             req.user = { id: payload.id, role: payload.role };

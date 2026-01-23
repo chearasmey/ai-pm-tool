@@ -16,7 +16,7 @@ export const errorMiddleware = (
     });
   }
 
-  console.error(err);
+  console.error({err});
 
   return res.status(500).json({
     success: false,
