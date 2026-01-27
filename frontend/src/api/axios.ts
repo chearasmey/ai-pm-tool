@@ -34,7 +34,7 @@ api.interceptors.response.use(
             throw apiError;
         }
 
-        if (error.response?.status === 401) {
+        if (error.response?.status === 401 && apiError.code !== 'TokenExpiredError') {
             throw apiError;
         }
 

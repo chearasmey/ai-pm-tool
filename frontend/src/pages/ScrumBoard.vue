@@ -30,8 +30,8 @@ import { useAuthStore } from "@/stores/auth.store";
 import type { ProjectInterface } from "@/types/project";
 import { UserRoleEnum } from "@/types/role";
 import { UserIcon } from "lucide-vue-next";
-import { computed, onMounted, ref } from "vue";
-import { useRoute } from "vue-router";
+import { computed, onMounted, ref, watch } from "vue";
+import { useRoute, useRouter } from "vue-router";
 
 type SprintStatus = "PLANNED" | "ACTIVE" | "COMPLETED";
 type Sprint = {
@@ -75,6 +75,7 @@ const showCreateSprint = ref(false);
 
 const auth = useAuthStore();
 const route = useRoute();
+const router = useRouter();
 const project = ref<ProjectInterface>();
 const showCreateIssue = ref(false);
 const showIssueView = ref(false);
@@ -93,7 +94,7 @@ const loadScrumBoards = async (projectkey: string) => {
     sprints.value = response.data.sprints;
     backlogIssues.value = response.data.backlogIssues;
     sprintIssuesMap.value = response.data.sprintIssuesMap;
-    openSprintId.value = sprints.value[sprints.value.length - 1]?.id??null;
+    openSprintId.value = sprints.value[sprints.value.length - 1]?.id ?? null;
     await loadActiveSprints(project.value?.id as number);
     permission.syncPermission(project.value?.id as number, auth.role!);
   }
@@ -230,12 +231,42 @@ const handleStoppedSprint = async () => {
 const onDeletedSprint = async () => {
   await loadScrumBoards(route.params.key as string);
   toastStore.show("Delete Sprint Successfully", "success");
-}
+};
 
 const onUpdatedSprint = async () => {
   await loadScrumBoards(route.params.key as string);
   toastStore.show("Update Sprint Successfully", "success");
-}
+};
+
+const openIssueDialogFromQuery = () => {
+  const qIssueId = route.query.issueId;
+  if (!qIssueId) return;
+
+  const id = Number(qIssueId);
+  if (!Number.isFinite(id) || id <= 0) return;
+
+  issueIdView.value = id;
+  showIssueView.value = true;
+};
+
+// ✅ open whenever query changes (including initial load)
+watch(
+  () => route.query.issueId,
+  () => openIssueDialogFromQuery(),
+  { immediate: true }
+);
+
+// ✅ when dialog closes, remove issueId from URL (so refresh won’t reopen)
+watch(
+  () => showIssueView.value,
+  (open) => {
+    if (!open && route.query.issueId) {
+      const nextQuery = { ...route.query };
+      delete nextQuery.issueId;
+      router.replace({ query: nextQuery });
+    }
+  }
+);
 
 onMounted(async () => {
   await loadScrumBoards(route.params.key as string);
@@ -265,9 +296,7 @@ onMounted(async () => {
         /></router-link>
       </div>
 
-      <DropdownMenu
-        v-if="permission.isAllowed()"
-      >
+      <DropdownMenu v-if="permission.isAllowed()">
         <DropdownMenuTrigger
           class="flex flex-col justify-center font-bold hover:bg-gray-200 px-2 pb-2 rounded-sm"
           title="More actions"

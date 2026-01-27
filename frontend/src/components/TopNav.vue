@@ -1,12 +1,18 @@
 <script setup lang="ts">
 import { useRouter } from "vue-router";
 import { useAuthStore } from "../stores/auth.store";
-import { LogOut, Plus, Settings } from "lucide-vue-next";
-import {Button} from "@/components/ui/button";
+import { LogOut, Settings } from "lucide-vue-next";
 import { Input } from "@/components/ui/input";
+import { ref } from "vue";
+import { bus } from "@/events/bus";
 
 const router = useRouter();
 const auth = useAuthStore();
+const searchInput = ref("");
+
+const openSearchDialog = () => {
+  bus.emit("search:open", { initialQuery: searchInput.value });
+};
 const logout = async () => {
   await auth.logout();
   router.push("/login");
@@ -19,7 +25,12 @@ const logout = async () => {
     </div>
 
     <div class="hidden md:flex justify-between gap-2 w-1/2 bg-amber-50">
-      <Input placeholder="Search" />
+      <Input
+        v-model="searchInput"
+        placeholder="Search (Ctrl + K)"
+        @focus="openSearchDialog"
+        @keydown.enter.prevent="openSearchDialog"
+      />
     </div>
 
     <div class="flex items-center gap-1">

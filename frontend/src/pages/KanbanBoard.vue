@@ -16,8 +16,8 @@ import {
 import { useAuthStore } from "@/stores/auth.store";
 import { UserRoleEnum } from "@/types/role";
 import { UserIcon } from "lucide-vue-next";
-import { computed, onMounted, ref } from "vue";
-import { useRoute } from "vue-router";
+import { computed, onMounted, ref, watch } from "vue";
+import { useRoute, useRouter } from "vue-router";
 import KanbanColumn from "@/components/KanbanColumn.vue";
 import type { ProjectInterface } from "@/types/project";
 import AddStatusDialog from "@/components/AddStatusDialog.vue";
@@ -31,6 +31,7 @@ import { toastStore } from "@/components/ui/toast/toast.store";
 import { usePermission } from "@/composable/userPermission";
 const auth = useAuthStore();
 const route = useRoute();
+const router = useRouter();
 
 type StatusCategory = "TODO" | "IN_PROGRESS" | "DONE";
 type BoardStatus = {
@@ -103,6 +104,36 @@ const loadKanbanBoard = async (projectkey: string) => {
     loading.value = false;
   }
 };
+
+const openIssueDialogFromQuery = () => {
+  const qIssueId = route.query.issueId;
+  if (!qIssueId) return;
+
+  const id = Number(qIssueId);
+  if (!Number.isFinite(id) || id <= 0) return;
+
+  issueIdView.value = id;
+  showIssueView.value = true;
+};
+
+// ✅ open whenever query changes (including initial load)
+watch(
+  () => route.query.issueId,
+  () => openIssueDialogFromQuery(),
+  { immediate: true }
+);
+
+// ✅ when dialog closes, remove issueId from URL (so refresh won’t reopen)
+watch(
+  () => showIssueView.value,
+  (open) => {
+    if (!open && route.query.issueId) {
+      const nextQuery = { ...route.query };
+      delete nextQuery.issueId;
+      router.replace({ query: nextQuery });
+    }
+  }
+);
 
 onMounted(async () => {
   await loadKanbanBoard(projectKey.value);
@@ -212,9 +243,7 @@ const handleRemoveIssue = async () => {
         /></router-link>
       </div>
 
-      <DropdownMenu
-        v-if="permission.isAllowed()"
-      >
+      <DropdownMenu v-if="permission.isAllowed()">
         <DropdownMenuTrigger
           class="flex flex-col justify-center font-bold hover:bg-gray-200 px-2 pb-2 rounded-sm"
           title="More actions"

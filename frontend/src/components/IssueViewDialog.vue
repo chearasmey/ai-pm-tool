@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { IssueService } from "@/api/issue.api";
-import { computed, ref, watch } from "vue";
+import { computed, onMounted, ref, watch } from "vue";
 
 type IssueType = "EPIC" | "STORY" | "TASK" | "BUG" | "SUBTASK";
 type Priority = "LOW" | "MEDIUM" | "HIGH" | "URGENT";
@@ -48,6 +48,7 @@ function setQuickMinutes(
 }
 
 async function getIssueById(issueId: number) {
+  if(!issueId) return ;
   const { data, status } = await IssueService.getIssueById(issueId);
   if (status === 200) {
     const issue = data.data;
@@ -154,7 +155,10 @@ async function submit() {
       timeSpent: form.value.timeSpent ?? undefined,
     };
 
-    const {data: response, status } = await IssueService.updateIssue(props.issueId, payload);
+    const { data: response, status } = await IssueService.updateIssue(
+      props.issueId,
+      payload
+    );
     if (status === 200) {
       emit("updated", response.message!);
     }
@@ -162,6 +166,11 @@ async function submit() {
     submitting.value = false;
   }
 }
+
+onMounted(async () => {
+  await loadMetadata();
+  await getIssueById(props.issueId);
+});
 </script>
 
 <template>
