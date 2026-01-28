@@ -1,4 +1,5 @@
 import { getDB } from "../../config/db";
+import { EntityType } from "../embedding/embedding-repository";
 
 type User = { id: number; role: "system_admin" | "project_admin" | "normal" | string };
 
@@ -90,6 +91,9 @@ function projectVisibilitySql(user: User) {
 }
 
 export class SearchRepository {
+    private isSystemAdmin(user: User) {
+        return String(user.role).toUpperCase() === "SYSTEM_ADMIN";
+    }
     async suggest(user: User, q: string, limit = 10) {
         const db = await getDB();
         const like = `%${q}%`;
@@ -224,7 +228,7 @@ export class SearchRepository {
       i.title AS issueTitle,
 
       i.description AS description,
-      i.statusId AS status,
+      bs.name AS status,
 
       i.updatedAt AS updatedAt,
       CASE
@@ -235,6 +239,7 @@ export class SearchRepository {
       END AS score
     FROM issues i
     JOIN projects p ON p.id = i.projectId
+    LEFT JOIN board_status bs ON bs.id = i.statusId
     WHERE (i.title LIKE ? OR i.description LIKE ? OR p.projectKey LIKE ? OR p.name LIKE ?)
     ${vis.sql}
   `);
@@ -288,5 +293,269 @@ export class SearchRepository {
         return { results };
     }
 
-    static parseTypes = parseTypes;
+    static readonly parseTypes = parseTypes;
+
+    async getEmbeddingRowsForModel(model: string, entityTypes: EntityType[] = ["PROJECT", "ISSUE"]) {
+        const db = await getDB();
+        const placeholders = entityTypes.map(() => "?").join(",");
+        return db.all(
+            `
+      SELECT entityType, entityId, vectorJson
+      FROM embeddings
+      WHERE model = ?
+        AND entityType IN (${placeholders})
+      `,
+            model,
+            ...entityTypes
+        );
+    }
+
+    async getEntitiesByIds(user: any, ids: { entityType: EntityType; entityId: number }[]) {
+        const db = await getDB();
+        if (!ids.length) return { results: [] as any[] };
+
+        // split
+        const projectIds = ids.filter(x => x.entityType === "PROJECT").map(x => x.entityId);
+        const issueIds = ids.filter(x => x.entityType === "ISSUE").map(x => x.entityId);
+
+        // NOTE: apply visibility via project join (same as your globalSearch visibility)
+        const vis = (this as any).constructor?.projectVisibilitySql
+            ? (this as any).constructor.projectVisibilitySql(user)
+            : { sql: "", params: [] };
+
+        const results: any[] = [];
+
+        if (projectIds.length) {
+            const pRows = await db.all(
+                `
+        SELECT
+          'PROJECT' AS entityType,
+          p.id AS projectId,
+          p.projectKey,
+          p.type AS projectType,
+          p.name,
+          p.description,
+          p.updatedAt
+        FROM projects p
+        WHERE p.id IN (${projectIds.map(() => "?").join(",")})
+        ${vis.sql}
+        `,
+                ...projectIds,
+                ...vis.params
+            );
+            results.push(...pRows.map((p: any) => ({
+                entityType: "PROJECT",
+                projectId: p.projectId,
+                projectKey: p.projectKey,
+                projectType: p.projectType,
+                name: p.name,
+                description: p.description ?? null,
+                updatedAt: p.updatedAt ?? null
+            })));
+        }
+
+        if (issueIds.length) {
+            const iRows = await db.all(
+                `
+        SELECT
+          'ISSUE' AS entityType,
+          i.id AS issueId,
+          i.type AS issueType,
+          i.title,
+          i.description,
+          i.statusId,
+          i.updatedAt,
+          p.id AS projectId,
+          p.projectKey,
+          p.name AS projectName,
+          p.type AS projectType
+        FROM issues i
+        JOIN projects p ON p.id = i.projectId
+        WHERE i.id IN (${issueIds.map(() => "?").join(",")})
+        ${vis.sql}
+        `,
+                ...issueIds,
+                ...vis.params
+            );
+            results.push(...iRows.map((r: any) => ({
+                entityType: "ISSUE",
+                issueId: r.issueId,
+                issueType: r.issueType,
+                title: r.title,
+                description: r.description ?? null,
+                status: r.status ?? null,
+                updatedAt: r.updatedAt ?? null,
+                projectId: r.projectId,
+                projectKey: r.projectKey,
+                projectName: r.projectName,
+                projectType: r.projectType
+            })));
+        }
+
+        return { results };
+    }
+
+    /**
+   * Return embeddings rows only for entities user can see:
+   * - SYSTEM_ADMIN: all embeddings
+   * - Others: must be project_member of the project
+   */
+    async getVisibleEmbeddingRowsForUser(user: User, model: string, entityTypes: EntityType[] = ["PROJECT", "ISSUE"]) {
+        const db = await getDB();
+
+        // SYSTEM_ADMIN can load all embeddings (still filter by type/model)
+        if (this.isSystemAdmin(user)) {
+            const placeholders = entityTypes.map(() => "?").join(",");
+            return db.all(
+                `
+        SELECT entityType, entityId, vectorJson
+        FROM embeddings
+        WHERE model = ?
+          AND entityType IN (${placeholders})
+        `,
+                model,
+                ...entityTypes
+            );
+        }
+
+        const includeProjects = entityTypes.includes("PROJECT");
+        const includeIssues = entityTypes.includes("ISSUE");
+        const parts: string[] = [];
+        const params: any[] = [];
+
+        if (includeProjects) {
+            parts.push(`
+        SELECT e.entityType, e.entityId, e.vectorJson
+        FROM embeddings e
+        JOIN projects p ON p.id = e.entityId
+        WHERE e.model = ?
+          AND e.entityType = 'PROJECT'
+          AND EXISTS (
+            SELECT 1 FROM project_member pm
+            WHERE pm.projectId = p.id AND pm.userId = ?
+          )
+      `);
+            params.push(model, user.id);
+        }
+
+        if (includeIssues) {
+            parts.push(`
+        SELECT e.entityType, e.entityId, e.vectorJson
+        FROM embeddings e
+        JOIN issues i ON i.id = e.entityId
+        JOIN projects p ON p.id = i.projectId
+        WHERE e.model = ?
+          AND e.entityType = 'ISSUE'
+          AND EXISTS (
+            SELECT 1 FROM project_member pm
+            WHERE pm.projectId = p.id AND pm.userId = ?
+          )
+      `);
+            params.push(model, user.id);
+        }
+
+        const sql = parts.join("\nUNION ALL\n");
+        return db.all(sql, ...params);
+    }
+
+    /**
+     * Fetch entity details for visible IDs only (extra safety).
+     * SYSTEM_ADMIN: no filter
+     * Others: must be project_member
+     */
+    async getVisibleEntitiesByIds(user: User, ids: { entityType: EntityType; entityId: number }[]) {
+        const db = await getDB();
+        if (!ids.length) return { results: [] as any[] };
+
+        const projectIds = ids.filter(x => x.entityType === "PROJECT").map(x => x.entityId);
+        const issueIds = ids.filter(x => x.entityType === "ISSUE").map(x => x.entityId);
+
+        const results: any[] = [];
+        const isAdmin = this.isSystemAdmin(user);
+
+        if (projectIds.length) {
+            const whereMember = isAdmin
+                ? ""
+                : `AND EXISTS (SELECT 1 FROM project_member pm WHERE pm.projectId = p.id AND pm.userId = ?)`;
+
+            const rows = await db.all(
+                `
+        SELECT
+          'PROJECT' AS entityType,
+          p.id AS projectId,
+          p.projectKey,
+          p.type AS projectType,
+          p.name,
+          p.description,
+          p.updatedAt
+        FROM projects p
+        WHERE p.id IN (${projectIds.map(() => "?").join(",")})
+        ${whereMember}
+        `,
+                ...(isAdmin ? [] : [user.id]),
+                ...projectIds
+            );
+
+            results.push(
+                ...rows.map((p: any) => ({
+                    entityType: "PROJECT",
+                    projectId: p.projectId,
+                    projectKey: p.projectKey,
+                    projectType: p.projectType,
+                    name: p.name,
+                    description: p.description ?? null,
+                    updatedAt: p.updatedAt ?? null
+                }))
+            );
+        }
+
+        if (issueIds.length) {
+            const whereMember = isAdmin
+                ? ""
+                : `AND EXISTS (SELECT 1 FROM project_member pm WHERE pm.projectId = p.id AND pm.userId = ?)`;
+
+            const rows = await db.all(
+                `
+        SELECT
+          'ISSUE' AS entityType,
+          i.id AS issueId,
+          i.type AS issueType,
+          i.title,
+          i.description,
+          bs.name AS status,
+          i.updatedAt,
+          p.id AS projectId,
+          p.projectKey,
+          p.name AS projectName,
+          p.type AS projectType
+        FROM issues i
+        JOIN projects p ON p.id = i.projectId
+        LEFT JOIN board_status bs ON bs.id = i.statusId
+        WHERE i.id IN (${issueIds.map(() => "?").join(",")})
+        ${whereMember}
+        `,
+                ...(isAdmin ? [] : [user.id]),
+                ...issueIds
+            );
+
+            results.push(
+                ...rows.map((r: any) => ({
+                    entityType: "ISSUE",
+                    issueId: r.issueId,
+                    issueType: r.issueType,
+                    title: r.title,
+                    description: r.description ?? null,
+                    status: r.status ?? null,
+                    updatedAt: r.updatedAt ?? null,
+                    projectId: r.projectId,
+                    projectKey: r.projectKey,
+                    projectName: r.projectName,
+                    projectType: r.projectType
+                }))
+            );
+        }
+
+        return { results };
+    }
+
 }

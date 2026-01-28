@@ -146,6 +146,19 @@ export const getDB = async (): Promise<Database> => {
     CREATE INDEX IF NOT EXISTS idx_project_favorite_project ON project_favorite(projectId);
   `);
 
+  await dbInstance.exec(`
+    CREATE TABLE IF NOT EXISTS embeddings (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      entityType TEXT NOT NULL CHECK(entityType IN ('PROJECT','ISSUE')),
+      entityId INTEGER NOT NULL,
+      model TEXT NOT NULL,
+      vectorJson TEXT NOT NULL, -- JSON string of number[]
+      textHash TEXT NOT NULL,   -- to know if content changed
+      updatedAt TEXT DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(entityType, entityId, model)
+    );
+  `);
+
   console.log("📦 SQLite DB Initialized");
 
   return dbInstance;

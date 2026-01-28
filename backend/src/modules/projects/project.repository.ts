@@ -1,4 +1,5 @@
 import { getDB } from "../../config/db";
+import { AppError } from "../../errors/app.error";
 import { Project } from "./project.model";
 import { ProjectRole, ProjectType } from "./project.type";
 
@@ -11,19 +12,48 @@ export class ProjectRepository {
         createdBy: number;
     }) {
         const db = await getDB();
+        const now = new Date().toISOString();
 
-        const result = await db.run(
-            `INSERT INTO projects 
-       (name, projectKey, type, description, createdBy)
-       VALUES (?, ?, ?, ?, ?)`,
-            data.name,
-            data.projectKey,
-            data.type,
-            data.description ?? null,
-            data.createdBy
-        );
+        await db.exec("BEGIN");
+        try {
+            const insertProject = await db.run(
+                `INSERT INTO projects 
+           (name, projectKey, type, description, createdBy)
+           VALUES (?, ?, ?, ?, ?)`,
+                data.name,
+                data.projectKey,
+                data.type,
+                data.description ?? null,
+                data.createdBy
+            );
 
-        return this.findById(result.lastID!);
+            const projectId = insertProject.lastID;
+            if(!projectId) throw new AppError("Create project failed", "PROJECT_CREATE_FAIL");
+
+            // 2) Insert creator into project_member as ADMIN
+            await db.run(
+                `
+                INSERT INTO project_member (projectId, userId, role)
+                VALUES (:projectId, :userId, :role)
+                ON CONFLICT(projectId, userId) DO UPDATE SET role = excluded.role
+                `,
+                {
+                projectId,
+                userId: data.createdBy,
+                role: ProjectRole.ADMIN satisfies ProjectRole
+                }
+            );
+
+            await db.exec("COMMIT");
+
+            return this.findById(projectId);
+
+        } catch (err: any) {
+            await db.exec("ROLLBACK");
+            throw new AppError(err.message || "Create project failed", err.code || "PROJECT_CREATE_FAIL");
+        }
+
+
     }
 
     static async findById(id: number): Promise<Project | undefined> {

@@ -39,15 +39,16 @@ export class SearchService {
         }
     }
 
-    static async globalSearch(q: string, opts?: { limit?: number; types?: string }) {
+    static async globalSearch(q: string, opts?: { limit?: number; types?: string; mode?: "keyword" | "hybrid"  }) {
         const params = new URLSearchParams({ q });
         if (opts?.limit) params.set("limit", String(opts.limit));
         if (opts?.types) params.set("types", opts.types);
+        if (opts?.mode) params.set("mode", opts.mode);
 
         const { data: response, status } = await api.get(`/search?${params.toString()}`);
 
         if (status === 200) {
-            return response.data as { results: SearchResult[] };
+            return response.data as { results: SearchResult[]; mode: "keyword" | "hybrid" };
         }
     }
 }

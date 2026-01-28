@@ -11,7 +11,7 @@ export const globalSearchSchema = z.object({
     query: z.object({
         q: z.string().trim().min(1).max(100),
         limit: z.coerce.number().min(1).max(50).optional(),
-        // types=PROJECT,ISSUE or ISSUE only etc.
-        types: z.string().optional()
+        types: z.string().optional(),
+        mode: z.enum(["keyword", "hybrid"]).optional()
     })
 });

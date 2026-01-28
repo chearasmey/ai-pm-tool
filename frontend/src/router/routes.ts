@@ -98,6 +98,16 @@ export const routes = [
         }
     },
     {
+        path: "/semantic",
+        component: () => import("../pages/admin/RebuildSemanticIndex.vue"),
+        meta: { requiresAuth: true, layout: "main" },
+    },
+    {
+        path: "/users",
+        component: () => import("../pages/admin/UserList.vue"),
+        meta: { requiresAuth: true, layout: "main" },
+    },
+    {
         path: "/403",
         component: () => import("../pages/Forbidden.vue"),
         meta: { layout: "main" }

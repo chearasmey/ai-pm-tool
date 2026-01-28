@@ -1,5 +1,8 @@
 <script setup lang="ts">
+import { useAuthStore } from '@/stores/auth.store';
 import SidebarItem from './SidebarItem.vue';
+import { UserRoleEnum } from '@/types/role';
+const auth = useAuthStore();
 </script>
 <template>
   <aside class="w-64 bg-white border-r overflow-y-auto">
@@ -10,7 +13,17 @@ import SidebarItem from './SidebarItem.vue';
       <div class="text-xs text-gray-400 uppercase mt-4">Projects</div>
       <SidebarItem label="Scrum" to="/scrum" />
       <SidebarItem label="Kanban" to="/kanban" />
-      <!-- <SidebarItem icon="⚙️" label="Settings" to="/settings" /> -->
+
+      <div v-if="auth.user?.role==UserRoleEnum.SYSTEM_ADMIN">
+        <div class="text-xs text-gray-400 uppercase mt-4">User Management</div>
+        <SidebarItem label="Users" to="/users" class="mt-4" />
+      </div>
+
+      <div v-if="auth.user?.role==UserRoleEnum.SYSTEM_ADMIN">
+        <div class="text-xs text-gray-400 uppercase mt-4">Settings</div>
+        <SidebarItem label="Build Semantic" to="/semantic" class="mt-4" />
+      </div>
+
     </nav>
   </aside>
 </template>

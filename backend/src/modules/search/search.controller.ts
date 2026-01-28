@@ -12,8 +12,15 @@ export class SearchController {
     }
 
     async global(req: Request, res: Response) {
-        const { q, types, limit } = req.query as any;
-        const data = await service.global(req.user, String(q), types ? String(types) : undefined, limit ? Number(limit) : undefined);
+        const { q, types, limit, mode } = req.query as any;
+        const data = await service.global(
+            req.user,
+            String(q),
+            types ? String(types) : undefined,
+            limit ? Number(limit) : undefined,
+            mode === "hybrid" ? "hybrid" : "keyword"
+        );
         return successResponse(res, data, "SEARCH_GLOBAL");
     }
+
 }

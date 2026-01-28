@@ -5,6 +5,7 @@ import { debounce } from "@/utils/debounce";
 import { useRouter } from "vue-router";
 import { useAuthStore } from "@/stores/auth.store";
 import { bus } from "@/events/bus";
+import { ArrowRight } from "lucide-vue-next";
 
 const router = useRouter();
 const auth = useAuthStore();
@@ -21,6 +22,7 @@ const results = ref<SearchResult[]>([]);
 const activeIndex = ref(0);
 
 const types = ref<string>("PROJECT,ISSUE");
+const mode = ref<"keyword" | "hybrid">("keyword");
 
 const flattened = computed(() => {
   const items: Array<{ kind: "SUGGEST" | "RESULT"; item: any }> = [];
@@ -109,6 +111,8 @@ const triggerSuggest = debounce(async () => {
 }, 250);
 
 const triggerSearch = debounce(async () => {
+  console.log({mode});
+  
   const query = q.value.trim();
   if (!query) {
     results.value = [];
@@ -119,7 +123,8 @@ const triggerSearch = debounce(async () => {
   try {
     const res = await SearchService.globalSearch(query, {
       limit: 20,
-      types: types.value
+      types: types.value,
+      mode: mode.value
     });
     results.value = res?.results ?? [];
   } catch (e: any) {
@@ -215,6 +220,23 @@ onBeforeUnmount(() => {
           placeholder="Search issues and projects..."
           autocomplete="off"
         />
+        <div class="flex items-center gap-2 mt-2">
+          <button
+            class="text-xs px-2 py-1 rounded border"
+            :class="mode === 'keyword' ? 'bg-muted' : ''"
+            @click="mode = 'keyword';triggerSuggest();triggerSearch();"
+          >
+            Keyword
+          </button>
+          <button
+            class="text-xs px-2 py-1 rounded border"
+            :class="mode === 'hybrid' ? 'bg-muted' : ''"
+            @click="mode = 'hybrid';triggerSuggest();triggerSearch();"
+          >
+            Semantic
+          </button>
+        </div>
+
         <div class="flex items-center justify-between mt-2 text-xs text-muted-foreground">
           <span>{{
             loadingSuggest || loadingSearch ? "Searching..." : "Type to search"
@@ -265,25 +287,40 @@ onBeforeUnmount(() => {
                 <div class="text-xs text-muted-foreground">{{ r.projectKey }}</div>
               </div>
               <div class="text-xs text-muted-foreground line-clamp-2">
-                {{ r.description || "—" }}
+                {{ r.description || "" }}
               </div>
+              <span
+                v-if="(r as any).semanticScore != null"
+                class="text-[11px] px-2 py-0.5 rounded bg-muted"
+              >
+                {{(r as any).name || (r as any).title + " sim " + (r as any).semanticScore}}
+              </span>
             </template>
 
             <template v-else>
               <div class="flex items-center justify-between">
                 <div class="font-medium truncate">{{ (r as any).title }}</div>
-                <div class="text-xs text-muted-foreground">
-                  {{ (r as any).projectKey }} • {{ (r as any).issueType }}
+                <div class="flex gap-1 items-center text-xs text-muted-foreground">
+                  {{ (r as any).projectKey }} <ArrowRight class="w-3" /> {{ (r as any).issueType }}
                 </div>
               </div>
               <div
                 class="text-xs text-muted-foreground flex items-center justify-between gap-2"
               >
-                <span class="truncate">{{ (r as any).description || "—" }}</span>
-                <span class="shrink-0 px-2 py-0.5 rounded bg-muted text-[11px]">
-                  {{ (r as any).status || "—" }}
+                <span class="truncate">{{ (r as any).description || "" }}</span>
+                <span
+                  v-if="(r as any).status"
+                  class="shrink-0 px-2 py-0.5 rounded bg-muted text-[11px]"
+                >
+                  {{ (r as any).status }}
                 </span>
               </div>
+              <span
+                v-if="(r as any).semanticScore != null"
+                class="text-[11px] px-2 py-0.5 rounded bg-muted"
+              >
+                {{(r as any).name || (r as any).title + " sim " + (r as any).semanticScore}}
+              </span>
             </template>
           </button>
         </div>
