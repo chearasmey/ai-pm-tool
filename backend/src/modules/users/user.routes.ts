@@ -15,6 +15,10 @@ router.post("/", authenticate, validate(createUserSchema), requireRole([UserRole
 router.get("/me", authenticate, UserController.me);
 router.put("/change-password", authenticate, validate(changePasswordSchema), UserController.updatePassword);
 router.put("/:uuid", authenticate, requireRole([UserRole.SYSTEM_ADMIN]), UserController.update);
-
+router.get("/admin/list", authenticate, requireRole([UserRole.SYSTEM_ADMIN]), UserController.getSystemUsers);
+router.post("/create", authenticate, requireRole([UserRole.SYSTEM_ADMIN]), UserController.createSystemUser);
+router.put("/:id/update", authenticate, requireRole([UserRole.SYSTEM_ADMIN]), UserController.updateSystemUser);
+router.post("/:id/reset-password", authenticate, requireRole([UserRole.SYSTEM_ADMIN]), UserController.resetPassword);
+router.delete("/:id/delete", authenticate, requireRole([UserRole.SYSTEM_ADMIN]), UserController.delete);
 
 export default router;

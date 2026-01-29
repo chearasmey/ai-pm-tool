@@ -39,14 +39,42 @@ export class UserRepository {
         return db.all<User[]>(`SELECT * FROM users ORDER BY createdAt DESC`);
     }
 
+    static async list(search: string | undefined, page: number, limit: number) {
+        const db = await getDB();
+        const offset = (page - 1) * limit;
+
+        const where = search ? `WHERE email LIKE :q OR name LIKE :q` : "";
+        const params = search ? { ":q": `%${search}%` } : {};
+
+        const totalRow = await db.get(
+            `SELECT COUNT(*) as total FROM users ${where}`,
+            params as any
+        );
+
+        const rows = await db.all(
+            `
+      SELECT id, email, name, role, mfaEnabled, createdAt
+      FROM users
+      ${where}
+      ORDER BY id DESC
+      LIMIT :limit OFFSET :offset
+      `,
+            {
+                ...params,
+                ":limit": limit,
+                ":offset": offset
+            } as any
+        );
+
+        return { rows, total: Number(totalRow?.total ?? 0) };
+    }
+
     /* ================================
        CREATE
     ================================= */
 
     static async create(input: CreateUserRequestDTO): Promise<User> {
         const db = await getDB();
-        console.log(input);
-
         const result = await db.run(
             `
       INSERT INTO users (email, name, passwordHash, role)
@@ -199,5 +227,161 @@ export class UserRepository {
     static async remove(id: number): Promise<void> {
         const db = await getDB();
         await db.run(`DELETE FROM users WHERE id = ?`, [id]);
+    }
+
+    static async createSystemUser(payload: { email: string; name?: string; role: string; passwordHash: string }) {
+        const db = await getDB();
+        const result = await db.run(
+            `
+      INSERT INTO users (email, name, role, passwordHash)
+      VALUES (?, ?, ?, ?)
+      `,
+            [
+                payload.email,
+                payload.name,
+                payload.role,
+                payload.passwordHash
+            ]
+        );
+
+        return this.findById(result.lastID as number);
+    }
+
+    static async updateSystemUser(id: number, payload: Partial<{ email: string; name: string | null; role: string }>) {
+        const db = await getDB();
+
+        await db.run(
+            `
+      UPDATE users
+      SET email = ?, name = ?, role = ?
+      WHERE id = ?
+      `,
+            [
+                payload.email,
+                payload.name,
+                payload.role,
+                id
+            ]
+        );
+
+        return this.findById(id);
+    }
+
+    static async setPassword(id: number, passwordHash: string, opts?: { disableMfa?: boolean }) {
+        const db = await getDB();
+
+        // Reset password -> invalidate refresh token
+        // Optional: disable MFA (recommended when admin resets)
+        const disableMfa = opts?.disableMfa ?? true;
+
+        await db.run(
+            `
+            UPDATE users
+            SET passwordHash = ?,
+                refreshToken = NULL,
+                mfaEnabled = ?,
+                mfaSecret = ?
+            WHERE id = ?
+            `,
+            [
+                passwordHash,
+                disableMfa ? 0 : undefined,
+                disableMfa ? null : undefined,
+                id
+            ]
+        );
+
+        // sqlite named params: remove undefined keys to avoid SQLITE_RANGE
+        // easiest: do 2 queries depending on disableMfa
+        if (disableMfa) {
+            await db.run(
+                `
+        UPDATE users
+        SET passwordHash = ?,
+            refreshToken = NULL,
+            mfaEnabled = 0,
+            mfaSecret = NULL
+        WHERE id = ?
+        `,
+                passwordHash,
+                id
+            );
+        } else {
+            await db.run(
+                `
+        UPDATE users
+        SET passwordHash = ?,
+            refreshToken = NULL
+        WHERE id = ?
+        `,
+                passwordHash,
+                id
+            );
+        }
+
+        return this.findById(id);
+    }
+
+    static async deleteUserAndCleanup(userId: number) {
+        const db = await getDB();
+
+        await db.exec("BEGIN");
+        try {
+            // 0) Invalidate session/security data first (safe even if delete fails later)
+            await db.run(
+                `
+        UPDATE users
+        SET refreshToken = NULL,
+            mfaEnabled = 0,
+            mfaSecret = NULL
+        WHERE id = ?
+        `,
+                userId
+            );
+
+            // 1) Remove from project memberships
+            await db.run(`DELETE FROM project_member WHERE userId = ?`, userId);
+
+            // 2) Remove from favorites/starred if you have it (ignore if table not exist)
+            // If you DO have table "project_favorite(userId, projectId)", keep this.
+            try {
+                await db.run(`DELETE FROM project_favorite WHERE userId = ?`, userId);
+            } catch (_) {
+                // ignore if table doesn't exist
+            }
+
+            // 3) Unassign issues (assignee)
+            // If your issues table uses different column name, update it.
+            try {
+                await db.run(`UPDATE issues SET assigneeId = NULL WHERE assigneeId = ?`, userId);
+            } catch (_) { }
+
+            // Optional: if issues has reporterId/createdBy, you can also null them
+            // ⚠️ Only do this if those columns are nullable in your schema.
+            try {
+                await db.run(`UPDATE issues SET createdBy = NULL WHERE createdBy = ?`, userId);
+            } catch (_) { }
+
+            // 4) Remove as project lead
+            try {
+                await db.run(`UPDATE projects SET leadUserId = NULL WHERE leadUserId = ?`, userId);
+            } catch (_) { }
+
+            // Optional: if projects.createdBy exists and is nullable, you can null it.
+            // Otherwise keep it or reassign to SYSTEM_ADMIN.
+            try {
+                await db.run(`UPDATE projects SET createdBy = NULL WHERE createdBy = ?`, userId);
+            } catch (_) { }
+
+            // 5) Finally delete user
+            const result = await db.run(`DELETE FROM users WHERE id = ?`, userId);
+
+            await db.exec("COMMIT");
+            return { changes: result.changes ?? 0 };
+        } catch (err) {
+            await db.exec("ROLLBACK");
+            throw err;
+        }
+
     }
 };

@@ -8,7 +8,7 @@ import {
   InputGroupAddon,
   InputGroupInput,
 } from "@/components/ui/input-group";
-import { SearchIcon, StarIcon } from "lucide-vue-next";
+import { SearchIcon } from "lucide-vue-next";
 import {
   Table,
   TableBody,
@@ -17,7 +17,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { ProjectTypeEnum, type ProjectInterface } from "@/types/project";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -40,92 +39,83 @@ import {
 } from "@/components/ui/alert-dialog";
 import { ProjectService } from "@/api/project.api";
 import { toastStore } from "@/components/ui/toast/toast.store";
-import { usePermission } from "@/composable/userPermission";
-import { ProjectFavoriteService } from "@/api/project-favorite.api";
-
+import { UserService } from "@/api/user.api";
+import { type UserInterface } from "@/types/user";
+import CreateUserDialog from "./CreateUserDialog.vue";
+import type { UserRoleEnum } from "@/types/role";
+import ResetPasswordDialog from "./ResetPasswordDialog.vue";
+type SelectedUserType = {
+  id: number;
+  email: string;
+  name: string | null;
+  role: UserRoleEnum;
+}
 const auth = useAuthStore();
-const projectStore = useProjectStore();
-const projects = ref<ProjectInterface[]>([]);
-const pagination = ref();
-const search = ref();
+
+const search = ref("");
 const page = ref(1);
 const totalPages = ref(1);
 const limit = APP_CONFIG.PAGINATION_LIMIT;
 const showDialogRef = ref<HTMLElement>();
 const seletedProjectKey = ref("");
-const permission = usePermission();
-const favoriteProjectIds = ref([]);
+const users = ref<UserInterface[]>([]);
+const isShowCreate = ref(false);
+const isShowEdit = ref(false);
+const selectedUser = ref<SelectedUserType>();
+const isShowReset = ref(false);
 
-const fetchProjects = async () => {
-  await projectStore.fetchProjects(
-    ProjectTypeEnum.SCRUM,
-    page.value,
-    limit,
-    search.value
-  );
-  projects.value = projectStore.projects;
-  pagination.value = projectStore.pagination;
-  totalPages.value = pagination.value.totalPages;
-  permission.syncPermission(0, auth.role!);
+const loadSystemUsers = async () => {
 
-  const {data: response, status} = await ProjectService.getFavoriteProjectIds();
-  if(status===200) {
-    favoriteProjectIds.value = response.data;
+  const { data: response, status} = await UserService.getSystemUsers(search.value, page.value, limit);
+  console.log(response, status);
+  if(status === 200) {
+    users.value = response.data.items;
+    totalPages.value = response.data.totalPages;
   }
 
-  
 };
 
 const onPageChange = async (p: number) => {
   page.value = p;
-  await fetchProjects();
+  await loadSystemUsers();
 };
 
 const onSearch = async () => {
   page.value = 1;
-  await fetchProjects();
+  await loadSystemUsers();
 };
 
-const showDeleteDialog = (projectKey: string) => {
-  seletedProjectKey.value = projectKey;
+const handleDeleteUser = (user: SelectedUserType) => {
+  selectedUser.value = user;
   showDialogRef.value?.click();
 };
-const deleteProject = async () => {
-  if (!seletedProjectKey.value) return;
-  const { status } = await ProjectService.deleteProject(seletedProjectKey.value);
+const deleteUser = async () => {
+  if (!selectedUser.value) return;
+  const { status } = await UserService.deleteUser(selectedUser.value.id);
   if (status === 200) {
-    toastStore.show("The project is deleted!", "success");
-    await fetchProjects();
+    toastStore.show("The user is deleted!", "success");
+    await loadSystemUsers();
   }
 };
 
-const onStar = async (projectKey: string) => {
-  const { status }  = await ProjectFavoriteService.star(projectKey);
-  if(status === 201) {
-    await fetchProjects();
-  }
+const handleEditUser = async (user: SelectedUserType) => {
+  selectedUser.value = user;
+  isShowEdit.value = true;
 }
 
-const onUnStar = async (projectKey: string) => {
-  const {status} = await ProjectFavoriteService.unStar(projectKey);
-  if(status === 200) {
-    await fetchProjects();
-  }
+const handleResetPassword = async (user: SelectedUserType) => {
+  selectedUser.value = user;
+  isShowReset.value = true;
 }
+
 onMounted(async () => {
-  await fetchProjects();
+  await loadSystemUsers();
 });
 </script>
 <template>
   <div class="flex justify-between">
-    <h1 class="text-2xl font-semibold mb-4 uppercase">Scrum</h1>
-    <Button
-      v-if="permission.isAllowed()"
-      as-child
-      variant="outline"
-    >
-      <router-link to="/scrum/create">Create</router-link>
-    </Button>
+    <h1 class="text-2xl font-semibold mb-4 uppercase">Users</h1>
+    <Button variant="outline" @click="isShowCreate = true"> Create </Button>
   </div>
   <div class="mt-3">
     <InputGroup class="max-w-62.5">
@@ -138,29 +128,22 @@ onMounted(async () => {
     <Table>
       <TableHeader>
         <TableRow>
-          <TableHead>
-            <StarIcon />
-          </TableHead>
           <TableHead>Name</TableHead>
-          <TableHead>Key</TableHead>
-          <TableHead>Lead</TableHead>
-          <TableHead>Last work update</TableHead>
-          <TableHead v-if="permission.isAllowed()">Action</TableHead>
+          <TableHead>Email</TableHead>
+          <TableHead>Role</TableHead>
+          <TableHead>Last update</TableHead>
+          <TableHead>Action</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
-        <TableRow v-for="project in projects">
+        <TableRow v-for="user in users">
           <TableCell>
-            <StarIcon v-if="favoriteProjectIds.some(el=>el === project.id)" fill="oklch(79.5% 0.184 86.047)" class="text-yellow-500 hover:cursor-pointer" @click="onUnStar(project.projectKey)" />
-            <StarIcon v-else class="hover:cursor-pointer" @click="onStar(project.projectKey)" />
+            {{ user.name }}
           </TableCell>
+          <TableCell>{{ user.email }}</TableCell>
+          <TableCell>{{ user.role.toLocaleUpperCase() }}</TableCell>
+          <TableCell>{{ formatRelativeDate(user.createdAt ?? "-") }}</TableCell>
           <TableCell>
-            <router-link :to="`/scrum/board/${project.projectKey}`" class="hover:underline">{{ project.name }}</router-link>
-          </TableCell>
-          <TableCell>{{ project.projectKey }}</TableCell>
-          <TableCell>{{ project.leadUserName ?? "-" }}</TableCell>
-          <TableCell>{{ formatRelativeDate(project.updatedAt ?? "-") }}</TableCell>
-          <TableCell v-if="permission.isAllowed()">
             <DropdownMenu>
               <DropdownMenuTrigger
                 class="flex flex-col justify-center font-bold hover:bg-gray-200 px-2 pb-2 rounded-sm"
@@ -168,12 +151,9 @@ onMounted(async () => {
                 >...</DropdownMenuTrigger
               >
               <DropdownMenuContent>
-                <DropdownMenuItem>
-                  <router-link :to="`/scrum/project/${project.projectKey}`"
-                    >Project Setting</router-link
-                  >
-                </DropdownMenuItem>
-                <DropdownMenuItem v-if="permission.isAllowed()" @click="showDeleteDialog(project.projectKey!)"
+                <DropdownMenuItem @click="handleEditUser(user)">Edit</DropdownMenuItem>
+                <DropdownMenuItem @click="handleResetPassword(user)">Reset</DropdownMenuItem>
+                <DropdownMenuItem @click="handleDeleteUser(user)"
                   >Delete Now</DropdownMenuItem
                 >
               </DropdownMenuContent>
@@ -192,14 +172,36 @@ onMounted(async () => {
         <AlertDialogHeader>
           <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
           <AlertDialogDescription>
-            This action cannot be undone. This will permanently delete project.
+            This action cannot be undone. This will permanently delete user.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel>Cancel</AlertDialogCancel>
-          <AlertDialogAction @click="deleteProject">Continue</AlertDialogAction>
+          <AlertDialogAction @click="deleteUser">Continue</AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
+
+    <CreateUserDialog
+      :open="isShowCreate"
+      mode="create"
+      @close="isShowCreate = false"
+      @saved="loadSystemUsers()"
+    />
+
+    <CreateUserDialog
+      :open="isShowEdit"
+      mode="update"
+      :user="selectedUser"
+      @close="isShowEdit = false"
+      @saved="loadSystemUsers()"
+    />
+
+    <ResetPasswordDialog
+      :open="isShowReset"
+      :user="selectedUser"
+      @close="isShowReset = false"
+      @reset="loadSystemUsers()"
+    />
   </div>
 </template>

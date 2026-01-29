@@ -31,6 +31,8 @@ export const getDB = async (): Promise<Database> => {
     );
   `);
 
+  await dbInstance.exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email ON users(email);`);
+
   await dbInstance.exec(`
     CREATE TABLE IF NOT EXISTS projects (
       id INTEGER PRIMARY KEY AUTOINCREMENT,

@@ -8,7 +8,7 @@ import { decodeToken } from "../../utils/jwt";
 export const UserController = {
     list: async (_: Request, res: Response) => {
         const users = await UserService.list();
-        const userList = users.map(user=>UserMapper.toResponse(user));
+        const userList = users.map(user => UserMapper.toResponse(user));
         return successResponse(res, userList, "Get user list successfully", 200);
 
     },
@@ -34,7 +34,6 @@ export const UserController = {
         res.json(UserMapper.toResponse(user));
     },
     updatePassword: async (req: Request, res: Response) => {
-        console.log(req.user);
         try {
             const { currentPassword, newPassword } = req.body;
             await UserService.updatePassword(
@@ -44,10 +43,111 @@ export const UserController = {
             );
             return successResponse(res, null, "PASSWORD_UPDATED");
         } catch (error: any) {
-            console.log({error})
+            console.log({ error })
             return errorResponse(res, error.message, error.name, 400, error);
         }
 
 
+    },
+
+    getSystemUsers: async (req: Request, res: Response) => {
+        try {
+            const search = (req.query.search as string | undefined) ?? undefined;
+            const page = Number(req.query.page ?? 1);
+            const limit = Number(req.query.limit ?? 10);
+
+            const { rows, total } = await UserService.getUsers(search, page, limit);
+
+            return successResponse(
+                res,
+                {
+                    items: rows,
+                    page,
+                    limit,
+                    total,
+                    totalPages: Math.ceil(total / limit)
+                },
+                "ADMIN_USER_LIST"
+            );
+        } catch (err: any) {
+            return errorResponse(res, err?.message || "LIST_FAILED", "ADMIN_USER_LIST_FAILED", 500);
+        }
+    },
+
+    createSystemUser: async (req: Request, res: Response) => {
+        try {
+            const { email, name, role } = req.body;
+
+            const { user, defaultPassword } = await UserService.createSystemUser({ email, name, role });
+
+            return successResponse(
+                res,
+                {
+                    user,
+                    defaultPassword // show once to admin UI
+                },
+                "ADMIN_USER_CREATED",
+                201
+            );
+        } catch (err: any) {
+            const status = err?.statusCode || 500;
+            return errorResponse(res, err?.message || "CREATE_FAILED", "ADMIN_USER_CREATE_FAILED", status);
+        }
+    },
+
+    updateSystemUser: async (req: Request, res: Response) => {
+        try {
+            const id = Number(req.params.id);
+            const updated = await UserService.updateSystemUser(id, req.body);
+
+            return successResponse(res, updated, "ADMIN_USER_UPDATED");
+        } catch (err: any) {
+            const status = err?.statusCode || 500;
+            return errorResponse(res, err?.message || "UPDATE_FAILED", "ADMIN_USER_UPDATE_FAILED", status);
+        }
+    },
+
+    resetPassword: async (req: Request, res: Response) => {
+        try {
+            const id = Number(req.params.id);
+            const disableMfa = req.body?.disableMfa ?? true;
+
+            const { user, newPassword } = await UserService.resetPasswordByAdmin(id, { disableMfa });
+
+            return successResponse(
+                res,
+                {
+                    user,
+                    newPassword // show once to admin UI
+                },
+                "ADMIN_PASSWORD_RESET"
+            );
+        } catch (err: any) {
+            const status = err?.statusCode || 500;
+            return errorResponse(res, err?.message || "RESET_FAILED", "ADMIN_PASSWORD_RESET_FAILED", status);
+        }
+    },
+
+    delete: async (req: Request, res: Response) => {
+        try {
+            const id = Number(req.params.id);
+            const data = await UserService.deleteUser(id, req.user.id);
+
+            return successResponse(
+                res,
+                { deleted: data.changes > 0 },
+                "ADMIN_USER_DELETED"
+            );
+        } catch (err: any) {
+            const status = err?.statusCode || 500;
+            return errorResponse(
+                res,
+                err?.message || "DELETE_FAILED",
+                "ADMIN_USER_DELETE_FAILED",
+                status
+            );
+        }
     }
+
+
 };
